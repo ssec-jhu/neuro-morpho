@@ -33,9 +33,9 @@ docs = [
 ]
 
 [project.urls]
-homepage = "git@github.com:ssec-jhu/neuro-morpho.git"
-documentation = "git@github.com:ssec-jhu/neuro-morpho.git"
-repository = "git@github.com:ssec-jhu/neuro-morpho.git"
+homepage = "https://github.com:ssec-jhu/neuro-morpho.git"
+documentation = "https://github.com:ssec-jhu/neuro-morpho.git"
+repository = "https://github.com:ssec-jhu/neuro-morpho.git"
 
 [build-system]
 requires = ["setuptools>=61.2", "setuptools_scm[toml]>=8.0"]
