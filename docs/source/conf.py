@@ -1,7 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 
 # -- Project information
-from package_name import __project__, __version__
+from neuro_morpho import __project__, __version__
 
 
 project = __project__
