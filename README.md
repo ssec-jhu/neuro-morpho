@@ -1,9 +1,9 @@
 # SSEC-JHU neuro_morpho
 
-[![CI](git@github.com:ssec-jhu/neuro-morpho.git/actions/workflows/ci.yml/badge.svg)](git@github.com:ssec-jhu/neuro-morpho.git/actions/workflows/ci.yml)
+[![CI](https://github.com/ssec-jhu/neuro-morpho/actions/workflows/ci.yml/badge.svg)](https://github.com/ssec-jhu/neuro-morpho/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/neuro-morpho/badge/?version=latest)](https://neuro-morpho.readthedocs.io/en/latest/?badge=latest)
-[![codecov](https://codecov.io/gh/git@github.com:ssec-jhu/neuro-morpho/branch/main/graph/badge.svg?token=0KPNKHRC2V)](https://codecov.io/gh/git@github.com:ssec-jhu/neuro-morpho)
-[![Security](git@github.com:ssec-jhu/neuro-morpho.git/actions/workflows/security.yml/badge.svg)](git@github.com:ssec-jhu/neuro-morpho.git/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/ssec-jhu/neuro-morpho/graph/badge.svg?token=nO3cCBglK2)](https://codecov.io/gh/ssec-jhu/neuro-morpho)
+[![Security](https://github.com/ssec-jhu/neuro-morpho/actions/workflows/security.yml/badge.svg)](https://github.com/ssec-jhu/neuro-morpho/actions/workflows/security.yml)
 <!---[![DOI](https://zenodo.org/badge/<insert_ID_number>.svg)](https://zenodo.org/badge/latestdoi/<insert_ID_number>) --->
 
 
@@ -91,7 +91,7 @@ _NOTE: The following steps require ``pip install -r requirements/dev.txt``._
 * Run tox ``tox``. This will run all of linting, security, test, docs and package building within tox virtual environments.
 * To run an individual step, use ``tox -e {step}`` for example, ``tox -e test``, ``tox -e build-docs``, etc.
 
-Typically, the CI tests run in github actions will use tox to run as above. See also [ci.yml](git@github.com:ssec-jhu/neuro-morpho.git/blob/main/.github/workflows/ci.yml).
+Typically, the CI tests run in github actions will use tox to run as above. See also [ci.yml](https://github.com/ssec-jhu/neuro-morpho/blob/main/.github/workflows/ci.yml).
 
 ## Outside of tox:
 
