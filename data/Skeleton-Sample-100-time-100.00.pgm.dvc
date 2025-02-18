@@ -1,0 +1,5 @@
+outs:
+- md5: 41345cd1601bcdf3496559d2939ee5ed
+  size: 22231131
+  hash: md5
+  path: Skeleton-Sample-100-time-100.00.pgm

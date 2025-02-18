@@ -1,0 +1,5 @@
+outs:
+- md5: d1c06f8556c5656eff7820f6343b29a4
+  size: 22231131
+  hash: md5
+  path: Segmented-Sample-16-time-100.00.pgm
