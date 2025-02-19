@@ -111,9 +111,10 @@ for cycle=1:10
         Skeleton = [Skeleton; Skeletonized];
     end
     delete(p);
+    clear var Skeletonized
 end
 save SkeletonAnalysis Skeleton
-clear var Skeleton Skeletonized
+clear var Skeleton
 
 %%
 clear
@@ -164,10 +165,11 @@ for cycle=1:10
         Segment = [Segment; Segmented];
     end
     delete(p);
+    clear var Segmented
 end
 
 save SegmentedAnalysis Segment
-clear var Segment Segmented
+clear var Segment
 
 %%
 clear
@@ -221,8 +223,9 @@ for sbr=1:5
             Real = [Real; Realistic];
         end
         delete(p);
+        clear var Realistic
     end
     Mat_workspace = strcat('RealisticAnalysis-', num2str(sbr), '.mat');
     save (Mat_workspace, 'Real')
-    clear var Real Realistic
+    clear var Real
 end
