@@ -144,7 +144,12 @@ for cycle=1:10
         Im=imread(filename);
         BW=logical(Im);
         info=imfinfo(filename);
-        Segmented(ii,1)=Scan_Video(BW,Im,params,info);
+        try
+            Segmented(ii,1)=Scan_Video(BW,Im,params,info);
+        catch ME
+            disp(['Error occured while processing the file ', filename]);
+            continue;
+        end
 
         % Convert the result to SWC file
         [filepath, swc_filename, ext] = fileparts(filename);
@@ -194,7 +199,12 @@ for sbr=1:5
             Im=imread(filename);
             BW=make_binary(Im,params.WindowSize,params.WindowType);
             info=imfinfo(filename);
-            Realistic(ii,1)=Scan_Video(BW,Im,params,info);
+            try
+                Realistic(ii,1)=Scan_Video(BW,Im,params,info);
+            catch ME
+                disp(['Error occured while processing the file ', filename]);
+                continue;
+            end
 
             % Convert the result to SWC file
             [filepath, swc_filename, ext] = fileparts(filename);
