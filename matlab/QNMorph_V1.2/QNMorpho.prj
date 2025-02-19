@@ -1,0 +1,123 @@
+<deployment-project plugin="plugin.apptool" plugin-version="1.0">
+  <configuration build-checksum="1960098150" file="/Volumes/Sabya_SSD/Work_HowardLab/BulkPropAPP/QNMorph_V1.2/QNMorpho.prj" location="/Volumes/Sabya_SSD/Work_HowardLab/BulkPropAPP/QNMorph_V1.2" name="QNMorpho" target="target.mlapps" target-name="Package App">
+    <param.appname>QNMorpho</param.appname>
+    <param.authnamewatermark>Sabyasachi Sutradhar</param.authnamewatermark>
+    <param.email>sabyasachi.sutradhar@yale.edu</param.email>
+    <param.company>Yale University</param.company>
+    <param.icon>${PROJECT_ROOT}/QNMorpho_resources/icon_24.png</param.icon>
+    <param.icons>
+      <file>${PROJECT_ROOT}/QNMorpho_resources/icon_48.png</file>
+      <file>${PROJECT_ROOT}/QNMorpho_resources/icon_24.png</file>
+      <file>${PROJECT_ROOT}/QNMorpho_resources/icon_16.png</file>
+    </param.icons>
+    <param.summary>This tool can calculate the morphological properties of a neuronal meshwork.</param.summary>
+    <param.description>Updated with some bug fixes on Apr 39th, 2024</param.description>
+    <param.screenshot>/private/var/folders/58/t3f7356d4wg74s0912yd1hp00000gn/T/tp3eafa32f_5061_4e84_8bb0_0fe9c6f62984.png</param.screenshot>
+    <param.version>1.3</param.version>
+    <param.products.name>
+      <item>MATLAB</item>
+      <item>Computer Vision Toolbox</item>
+      <item>Curve Fitting Toolbox</item>
+      <item>Image Processing Toolbox</item>
+      <item>Optimization Toolbox</item>
+      <item>Parallel Computing Toolbox</item>
+      <item>Signal Processing Toolbox</item>
+      <item>Statistics and Machine Learning Toolbox</item>
+    </param.products.name>
+    <param.products.id>
+      <item>1</item>
+      <item>96</item>
+      <item>60</item>
+      <item>17</item>
+      <item>6</item>
+      <item>80</item>
+      <item>8</item>
+      <item>19</item>
+    </param.products.id>
+    <param.products.version>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+      <item>23.2</item>
+    </param.products.version>
+    <param.platforms />
+    <param.output>/Volumes/Sabya_SSD/Work_HowardLab/BulkPropAPP</param.output>
+    <param.guid>98bf2612-f1c4-4743-ba1a-e0b0dab0e9a2</param.guid>
+    <unset>
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.platforms />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}/QNMorpho.mlapp</file>
+    </fileset.main>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}/ROI_Editor.m</file>
+      <file>${PROJECT_ROOT}/Run_Scan.m</file>
+      <file>${PROJECT_ROOT}/Scan_Video.m</file>
+      <file>${PROJECT_ROOT}/private/Calculate_AvDirection.m</file>
+      <file>${PROJECT_ROOT}/private/Calculate_FractalDim_MeshSize.m</file>
+      <file>${PROJECT_ROOT}/private/Calculate_MassRadius.m</file>
+      <file>${PROJECT_ROOT}/private/Calculate_Properties.m</file>
+      <file>${PROJECT_ROOT}/private/Calculate_SubtreeStructure.m</file>
+      <file>${PROJECT_ROOT}/private/Connect_Points.m</file>
+      <file>${PROJECT_ROOT}/private/PersistanceLength_fromAvgDir.m</file>
+      <file>${PROJECT_ROOT}/private/Remove_SinglePixelBranches.m</file>
+      <file>${PROJECT_ROOT}/private/Return_Angle.m</file>
+      <file>${PROJECT_ROOT}/private/Rotate_Image.m</file>
+      <file>${PROJECT_ROOT}/private/Subtree_Sizes.m</file>
+      <file>${PROJECT_ROOT}/private/add_branchpoints.m</file>
+      <file>${PROJECT_ROOT}/private/check_circular.m</file>
+      <file>${PROJECT_ROOT}/private/curvspace.m</file>
+      <file>${PROJECT_ROOT}/private/export_csvFile.m</file>
+      <file>${PROJECT_ROOT}/private/fit_smoothingspline.m</file>
+      <file>${PROJECT_ROOT}/private/make_binary.m</file>
+      <file>${PROJECT_ROOT}/private/measure_RadiusofGyration.m</file>
+    </fileset.depfun>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}/Example_Images</file>
+    </fileset.resources>
+    <fileset.package />
+    <build-deliverables>
+      <file location="/Volumes/Sabya_SSD/Work_HowardLab" name="BulkPropAPP" optional="false">/Volumes/Sabya_SSD/Work_HowardLab/BulkPropAPP</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/Applications/MATLAB_R2023b.app</root>
+      <toolboxes>
+        <toolbox name="matlabcoder" />
+        <toolbox name="neuralnetwork" />
+      </toolboxes>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+      <toolbox>
+        <neuralnetwork>
+          <enabled>true</enabled>
+        </neuralnetwork>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>true</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>14.4.1</osver>
+      <os32>true</os32>
+      <os64>false</os64>
+      <arch>maci64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

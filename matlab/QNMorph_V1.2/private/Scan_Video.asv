@@ -1,0 +1,106 @@
+function outfile=Scan_Video(infile,in,logdir,params,varargin)
+    %% Name of the Movie
+    start=clock;
+    info=imfinfo(infile);
+    n_frame=numel(info);
+    [filepath,name,ext] = fileparts(infile);
+    fid{in}=fopen(strcat(logdir,name,'.log'),'w');
+    
+    %% conf
+    if ~isstruct(varargin{1})    % defaults for all properties
+        prescription.print = 0;
+        prescription.rotation = 0;
+        prescription.X=zeros(4,2);
+        prescription.neuronposition=1;
+        prescription.TrimRatio=0;
+    elseif isstruct(varargin{1}) % initial prescription struct provided
+        prescription = varargin{1};
+        varargin(1)=[];
+    end
+    
+    %% run all images in the tiff stack
+    for ii=1:n_frame
+        if ext=='.tif'
+            I=imread(infile,ii);%read images
+        else
+            I=imread(infile);%read images
+        end
+        if ext=='.pgm'
+              II=imread(infile);
+             I=logical(padarray(II,[50,50],0,'both'));
+        end
+        %%
+        
+        
+        %%
+        if   prescription.rotation ==1
+            X=prescription.X;
+            [Irot,XR]=Rotate_Image(I,prescription.angle,X);
+            Xold=XR;
+            %%%%%%%%%%%%%%%%%%%%%%%%% check left right axis
+            ang=atan2(XR(3,2)-XR(4,2),XR(3,1)-XR(4,1));
+            if ang<0
+                Irot=flipud(Irot);
+                XR(:,2)=size(Irot,1)-XR(:,2)+1;
+            end
+            prescription.XR=XR;
+            %%%%%%%%%%%%%%%%%%%%%%%%
+        else
+            Irot=I;
+            prescription.XR=zeros(4,0);
+            prescription.neuronposition=1;
+        end
+        
+        
+        
+   
+        fprintf(fid{in},'Processing file %d frame %d at %0.2f seconds\n',in,ii,etime( clock, start));
+        
+        [out.Neuron,out.Branch]=Calculate_Properties(Irot,params,prescription);
+        %%  Trimming
+
+        for kk=1:length(prescription.TrimRatio)
+        skel=out.Neuron.skel;
+        skelmask=zeros(size(skel));
+        skeltrim=zeros(size(skel));
+        cmx=out.Neuron.cmx;
+        cmy=out.Neuron.cmy;
+        rx=prescription.TrimRatio(kk)*out.Neuron.Rgyr(1)/2;
+        ry=prescription.TrimRatio(kk)*out.Neuron.Rgyr(2)/2;
+       xmin=max(1,round(cmy-ry)
+       xmax
+       ymin
+       ymax
+        skelmask(:floor(cmy+ry),floor(cmx-rx):floor(cmx+rx))=1;
+          size(skel)
+          size(skelmask)
+        skeltrim=skel.*skelmask;
+        skeltrim=logical(skeltrim);
+
+        skeltrimf=bwareafilt(skeltrim,1,'largest');
+
+        prestrim.pixelsize=out.Neuron.pixelsize;
+        prestrim.persislen_threshold=10.0/prestrim.pixelsize;
+        prestrim.neuronposition=1;
+        prestrim.XR=zeros(4,0);
+        prestrim.rotation=0;
+        prestrim.angle=0;
+        prestrim.print=0;       
+        
+         [out.NeuronTrim(kk),out.BranchTrim(kk)]=Calculate_Properties(skeltrimf,params,prestrim);     
+        end
+        
+        
+             for kk=1:length(prescription.TrimRatio)
+            out.NeuronTrim(kk).TrimRatio=prescription.TrimRatio(kk);
+             end
+             
+             
+        outfile(ii)=out;
+        
+        
+        fprintf(fid{in},'Proseccing FINISHED..... scanning took %0.2f seconds\n', etime(clock,start));
+        fclose(fid{in});
+    end
+    
+    
