@@ -2,7 +2,6 @@ clear
 clc
 close all
 
-% %%
 % % Set Python environment
 % pyenv('Version', '/Library/anaconda3/envs/skelneton/bin/python');
 % % Add the directory containing the Python script to the Python path
@@ -19,49 +18,80 @@ close all
 % else
 %     error('The .pkl file does not contain a dictionary.');
 % end
-% % Extract keys and values
-% keys = py.list(data.keys());  % Convert Python dict keys to MATLAB cell array
-% values = py.list(data.values());  % Convert Python dict values to MATLAB cell array
-% % Display keys and values
-% disp('Keys:');
-% disp(keys);
-% disp('Values:');
-% disp(values);
 % 
-% % Extract the value associated with the 'val' key
-% val_data = data{'val'};
+% % Convert Python dict keys and values to MATLAB cell array
+% keys = py.list(data.keys());
+% values = py.list(data.values());
+% 
+% % Extract the values associated with the 'val' and 'train'keys
+% val_data = cell(data{'val'});
+% train_data = cell(data{'train'});
+% 
 % % Convert Python list to MATLAB cell array
-% val_string = string(cell(val_data));
+% data = sort(string([val_data, train_data]));
+% 
 % % Display the result
-% disp('Values for "val" key:');
-% disp(val_string);
-% 
-% %%
-% 
-% N_neuorns=12; % length(val_string);
-% addpath(genpath('QNMorph_V1.2'))
-% params.WindowType='average';
-% params.WindowSize=13;
-% params.pixelsize=0.25;
-% params.Topology=1;
-% params.Fine=1;
-% params.Soma=[512,512];%%%%in pixel
-% params.persislen_threshold=10.0/params.pixelsize;
-% p=parpool('local',N_neuorns);
-% 
-% parfor ii=1:N_neuorns
-% filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-%     'Simulations_16bit_Size1024/output/ex6/submission/'], val_string(ii));
-% filename = strrep(filename, '.pgm', '.tif');
-% Im=imread(filename);
-% 
-% BW=logical(Im);
-% info=imfinfo(filename);
-% Skeletonized_Unet(ii,1)=Scan_Video(BW,Im,params,info);
-% end
-% delete(p);
-% save SkeletonAnalysis_Unet Skeletonized_Unet
-% clear var Skeletonized_Unet
+% disp('Values for "val" and "train" keys:');
+% disp(data(:));
+
+N_neurons=10;
+addpath(genpath('QNMorph_V1.2.1'))
+addpath(genpath('ReadWrite_SWC'))
+params.WindowType='average';
+params.WindowSize=13;
+params.pixelsize=0.25;
+params.Topology=1;
+params.Fine=1;
+params.Soma=[512,512];%%%%in pixel
+params.persislen_threshold=10.0/params.pixelsize;
+params.SaveBinary = 0;
+params.SaveSWC = 0;
+params.SaveWorkspace = 0;
+
+for sbr=1:5
+    Skeleton_Unet = struct();
+    for cycle=1:10
+        fprintf('SBR %d, Cycle %d:\n', sbr, cycle)
+        p=parpool('local',N_neurons);
+        parfor ii=1:N_neurons
+            cntr = N_neurons * (cycle - 1) + ii;
+            filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
+                'Simulations_16bit_Size1024/output/ex8/evaluation/'], ...
+                num2str(sbr), '-Sample-', num2str(cntr),'-time-36.00_pred_bin.tif');
+            fprintf('%s\n', filename);
+            Im=imread(filename);
+            BW=logical(Im);
+            info=imfinfo(filename);
+            try
+                Skeletonized_Unet(ii,1)=Scan_Video(BW,Im,params,info);
+            catch ME
+                disp(['Error occured while processing the file ', filename]);
+                continue;
+            end
+            % Convert the result to SWC file
+            [filepath, swc_filename, ext] = fileparts(filename);
+            swc_filename = strrep(swc_filename, '_pred_bin', '_fromUnet-SBR-');
+            idx = find(swc_filename == '-', 1);
+            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
+                swc_filename(1:idx-1), '.swc');
+            fprintf('%s\n', swc_filename);
+            Write_SWCFromMAT(Skeletonized_Unet(ii,1), swc_filename);
+        end
+        if (cycle == 1)
+            Skeleton_Unet = Skeletonized_Unet;
+        else
+            Skeleton_Unet = [Skeleton_Unet; Skeletonized_Unet];
+        end
+        delete(p);
+        clear var Skeletonized_Unet
+    end
+
+    if (params.SaveWorkspace == 1)
+        Mat_workspace = strcat('SkeletonAnalysis_Unet-', num2str(sbr), '.mat');
+        save (Mat_workspace, 'Skeleton_Unet')
+    end
+    clear var Skeleton_Unet
+end
 
 %%
 clear
@@ -78,13 +108,80 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.SaveBinary = 0;
+params.SaveSWC = 1;
+params.SaveWorkspace = 1;
+
+for sbr=1:5
+    Prediction_Unet = struct();
+    for cycle=1:10
+        fprintf('SBR %d, Cycle %d:\n', sbr, cycle)
+        p=parpool('local',N_neurons);
+        parfor ii=1:N_neurons
+            cntr = N_neurons * (cycle - 1) + ii;
+            filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
+                'Simulations_16bit_Size1024/output/ex8/evaluation/'], ...
+                num2str(sbr), '-Sample-', num2str(cntr),'-time-36.00_pred.tif');
+            fprintf('%s\n', filename);
+            Im=imread(filename);
+            BW=make_binary(Im,params.WindowSize,params.WindowType);
+            info=imfinfo(filename);
+            try
+                Predicted_Unet(ii,1)=Scan_Video(BW,Im,params,info);
+            catch ME
+                disp(['Error occured while processing the file ', filename]);
+                continue;
+            end
+            % Convert the result to SWC file
+            [filepath, swc_filename, ext] = fileparts(filename);
+            swc_filename = strrep(swc_filename, '_pred', '_fromUnet_pred-SBR-');
+            idx = find(swc_filename == '-', 1);
+            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
+                swc_filename(1:idx-1), '.swc');
+            fprintf('%s\n', swc_filename);
+            Write_SWCFromMAT(Predicted_Unet(ii,1), swc_filename);
+        end
+        if (cycle == 1)
+            Prediction_Unet = Predicted_Unet;
+        else
+            Prediction_Unet = [Prediction_Unet; Predicted_Unet];
+        end
+        delete(p);
+        clear var Predicted_Unet
+    end
+
+    if (params.SaveWorkspace == 1)
+        Mat_workspace = strcat('PredictedAnalysis_Unet-', num2str(sbr), '.mat');
+        save (Mat_workspace, 'Prediction_Unet')
+    end
+    clear var Prediction_Unet
+end
+
+%%
+clear
+clc
+close all
+
+N_neurons=10;
+addpath(genpath('QNMorph_V1.2.1'))
+addpath(genpath('ReadWrite_SWC'))
+params.WindowType='average';
+params.WindowSize=13;
+params.pixelsize=0.25;
+params.Topology=1;
+params.Fine=1;
+params.Soma=[512,512];%%%%in pixel
+params.persislen_threshold=10.0/params.pixelsize;
+params.SaveBinary = 0;
+params.SaveSWC = 0;
+params.SaveWorkspace = 0;
 
 Skeleton = struct();
 for cycle=1:10
     fprintf('Cycle %d:\n', cycle)
     p=parpool('local',N_neurons);
     parfor ii=1:N_neurons
-        cntr = 10 * (cycle - 1) + ii;
+        cntr = N_neurons * (cycle - 1) + ii;
         filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
            'Simulations_16bit_Size1024/images/Skeleton-Sample-'], ...
            num2str(cntr),'-time-36.00.pgm');
@@ -113,7 +210,10 @@ for cycle=1:10
     delete(p);
     clear var Skeletonized
 end
-save SkeletonAnalysis Skeleton
+
+if (params.SaveWorkspace == 1)
+    save SkeletonAnalysis Skeleton
+end
 clear var Skeleton
 
 %%
@@ -131,13 +231,16 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.SaveBinary = 0;
+params.SaveSWC = 0;
+params.SaveWorkspace = 0;
 
 Segment = struct();
 for cycle=1:10
     fprintf('Cycle %d:\n', cycle)
     p=parpool('local',N_neurons);
     parfor ii=1:N_neurons
-        cntr = 10 * (cycle - 1) + ii;
+        cntr = N_neurons * (cycle - 1) + ii;
         filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
            'Simulations_16bit_Size1024/images/Segmented-Sample-'], ...
            num2str(cntr),'-time-36.00.pgm');
@@ -168,7 +271,9 @@ for cycle=1:10
     clear var Segmented
 end
 
-save SegmentedAnalysis Segment
+if (params.SaveWorkspace == 1)
+    save SegmentedAnalysis Segment
+end
 clear var Segment
 
 %%
@@ -186,6 +291,9 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.SaveBinary = 1;
+params.SaveSWC = 0;
+params.SaveWorkspace = 0;
 
 for sbr=1:5
     Real = struct();
@@ -193,7 +301,8 @@ for sbr=1:5
         fprintf('SBR %d, Cycle %d:\n', sbr, cycle)
         p=parpool('local',N_neurons);
         parfor ii=1:N_neurons
-            cntr = 10 * (cycle - 1) + ii;
+        %for ii=1:N_neurons
+            cntr = N_neurons * (cycle - 1) + ii;
             filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
                 'Simulations_16bit_Size1024/images/Realistic-SBR-'],num2str(sbr), ...
                 '-Sample-',num2str(cntr),'-time-36.00.pgm');
@@ -208,14 +317,15 @@ for sbr=1:5
                 continue;
             end
 
-            % Convert the result to SWC file
-            [filepath, swc_filename, ext] = fileparts(filename);
-            dash_indices = find(swc_filename == '-');
-            idx = dash_indices(3);
-            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
-                '_fromRealistic-SBR-', num2str(sbr), '.swc'); 
-            fprintf('%s\n', swc_filename);
-            Write_SWCFromMAT(Realistic(ii,1), swc_filename);
+            if (params.SaveSWC == 1) % Convert the result to SWC file
+                [filepath, swc_filename, ext] = fileparts(filename);
+                dash_indices = find(swc_filename == '-');
+                idx = dash_indices(3);
+                swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
+                    '_fromRealistic-SBR-', num2str(sbr), '.swc'); 
+                fprintf('%s\n', swc_filename);
+                Write_SWCFromMAT(Realistic(ii,1), swc_filename);
+            end
         end
         if (cycle == 1)
             Real = Realistic;
@@ -225,7 +335,9 @@ for sbr=1:5
         delete(p);
         clear var Realistic
     end
-    Mat_workspace = strcat('RealisticAnalysis-', num2str(sbr), '.mat');
-    save (Mat_workspace, 'Real')
+    if (params.SaveWorkspace == 1)
+        Mat_workspace = strcat('RealisticAnalysis-', num2str(sbr), '.mat');
+        save (Mat_workspace, 'Real');
+    end
     clear var Real
 end

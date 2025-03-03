@@ -31,6 +31,15 @@
         skel=bwskel(skel,'MinBranchLength',5);
         skel=skel.*logical(BW);
     
+        if (params.SaveBinary == 1) % Dump skeleton to file
+            dash_indices = find(Neuron.FileName == '-');
+            idx = dash_indices(3);
+            skel_filename = strcat(Neuron.FilePath,'/Skeleton', ...
+                Neuron.FileName(idx:end), '_from', Neuron.FileName(1:idx-1), '.tif');
+            %fprintf('%s\n', skel_filename);
+            imwrite(skel, skel_filename);
+        end
+
         % figure
         % imshow(BW)
         % hold on
