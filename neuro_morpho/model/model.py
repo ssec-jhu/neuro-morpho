@@ -1,0 +1,1 @@
+"""A base class for all models to implement"""

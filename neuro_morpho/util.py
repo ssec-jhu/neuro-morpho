@@ -2,7 +2,7 @@ import importlib
 import os
 from pathlib import Path
 
-from . import __project__  # Keep as relative for templating reasons.
+from . import __project__
 
 
 def find_package_location(package=__project__):
