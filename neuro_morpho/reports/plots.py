@@ -5,9 +5,10 @@ import pandas as pd
 
 def plot_sabya(
     data: pd.DataFrame,
-    title: str,
     ax: plt.Axes | None = None,
     fig_kw: dict = {},
+    bar_width: float = 0.5,
+    ax_ylabel: str = "",
 ) -> plt.Figure:
     """Make the pseudo box plot that sabya uses.
 
@@ -21,6 +22,16 @@ def plot_sabya(
     instead of quartiles and whiskers are deliberate. Jittered raw data are
     plotted for each group. Also shown are the mean, and 95% confidence
     intervals for the mean.
+
+    Args:
+        data (pd.DataFrame): The data to plot
+        ax (plt.Axes, optional): The axes to plot on. Defaults to None.
+        fig_kw (dict, optional): The figure keyword arguments. Defaults to {}.
+        bar_width (float, optional): The width of the bars. Defaults to 0.5.
+        ax_ylabel (str, optional): The y-axis label. Defaults to "".
+
+    Returns:
+        plt.Figure: The figure object
     """
 
     arr = data.to_numpy()
@@ -29,36 +40,49 @@ def plot_sabya(
     std = np.std(arr, axis=0)
     sem = std / np.sqrt(arr.shape[0])
 
-    sorted_arr = np.sort(arr, axis=0)
-    mn = (np.less(sorted_arr, (mean - std)).sum(axis=0) / arr.shape[0]) * 100
-    mx = (np.greater(sorted_arr, (mean + std)).sum(axis=0) / arr.shape[0]) * 100
+    locs = np.arange(arr.shape[1])
 
     ax = ax or plt.subplots(**fig_kw)[1]
-    ax.set_title(title)
+    ax.bar(
+        locs,
+        2 * std,
+        bottom=mean - std,
+        color="mediumpurple",
+        width=bar_width,
+    )
 
-    for i in range(arr.shape[1]):
-        ax.boxplot(
-            arr[:, i],
-            positions=[i],
-            usermedians=[mean[i]],
-            conf_intervals=np.array([[mean[i] - sem[i], mean[i] + sem[i]]]),
-            whis=[mn[i], mx[i]],
-            tick_labels=[data.columns[i]],
-            showfliers=False,
-            medianprops={"color": "k"},
-            boxprops={"color": "k"},
-            whiskerprops={"color": "k"},
-            widths=0.3,
+    ax.bar(
+        locs,
+        2 * sem,
+        bottom=mean - sem,
+        color="lightcoral",
+        width=bar_width,
+    )
+
+    for i in locs:
+        ax.hlines(
+            mean[i],
+            i - bar_width / 2,
+            i + bar_width / 2,
+            color="red",
+            linewidth=1,
         )
 
-        locs = np.random.uniform(i - 0.15, i + 0.15, size=arr.shape[0])
-        ax.plot(
-            locs,
+        ax.scatter(
+            np.random.uniform(i - bar_width / 2, i + bar_width / 2, size=arr.shape[0]),
             arr[:, i],
-            "o",
             color="k",
             alpha=0.2,
         )
+
+    ax.set_ylim(
+        arr.min() - 2 * std.min(),
+        arr.max() + 2 * std.max(),
+    )
+    ax.set_ylabel(ax_ylabel)
+
+    ax.set_xticks(locs)
+    ax.set_xticklabels(data.columns)
 
     return ax.figure
 
@@ -66,10 +90,8 @@ def plot_sabya(
 if __name__ == "__main__":
     import pandas as pd
 
-    csv_url = "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
-    iris = pd.read_csv(csv_url, names=["sepal_length", "sepal_width", "petal_length", "petal_width", "class"])
-    iris = iris.drop(columns="class")
+    data = pd.DataFrame(np.random.normal(5, 15, size=(100, 4)), columns=["a", "b", "c", "d"])
 
-    fig = plot_sabya(iris, title="Iris Dataset")
+    fig = plot_sabya(data)
 
     plt.show()
