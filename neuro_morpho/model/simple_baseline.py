@@ -65,4 +65,4 @@ class SimpleBaseLine(base.BaseModel):
     def load(self, path: Path | str) -> None:
         """Load the model from the given path."""
         with Path(path).open("r") as f:
-            self.percentile = int(f.read())
+            self.percentile = int(f.read().strip())
