@@ -10,17 +10,30 @@ ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 class BaseModel:
     """Base class for all models to implement"""
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "BaseModel":
+    def fit(self, data_dir:str|Path) -> "BaseModel":
         """Fit the model to the data.
 
         Args:
-            x (np.ndarray): The input data should be size of (n_samples, width, height, channels)
-            y (np.ndarray): The target data should be size of (n_samples, width, height, channels)
+            data_dir (str|Path): The directory containing the data files to fit the model
+                images should have the size (n_samples, width, height, channels)
 
         Returns:
             BaseModel: The fitted model
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
+
+    def predict_dir(self, in_dir: str | Path, out_dir:str|Path) -> np.ndarray:
+        """Predict the output for all images in the given directory.
+
+        Args:
+            in_dir (str|Path): The directory containing the data files to predict
+                images should have the size (n_samples, width, height, channels)
+            out_dir (str|Path): The directory to save the output
+
+        Returns:
+            np.ndarray: The predicted output
+        """
+        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Predict the output given the input x

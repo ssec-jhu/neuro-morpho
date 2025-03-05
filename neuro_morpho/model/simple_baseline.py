@@ -1,5 +1,4 @@
 """A simple baseline model for testing."""
-
 from pathlib import Path
 from typing import override
 
@@ -45,24 +44,30 @@ class SimpleBaseLine(base.BaseModel):
         """
         self.percentile = percentile
 
+
+    @override
+    def fit(
+        self,
+        data_dir: Path | str,
+    ) -> "SimpleBaseLine":
+        return self
+
+
     @override
     def predict(
         self,
         x: np.ndarray,
     ) -> np.ndarray:
-        """Predict the output given the input x."""
         x = np.squeeze(x, axis=-1)
         x = make_binary(x, self.percentile)
         return np.expand_dims(x, axis=-1)
 
     @override
     def save(self, path: Path | str) -> None:
-        """Save the model to the given path."""
         with Path(path).open("w") as f:
             f.write(str(self.percentile))
 
     @override
     def load(self, path: Path | str) -> None:
-        """Load the model from the given path."""
         with Path(path).open("r") as f:
             self.percentile = int(f.read().strip())
