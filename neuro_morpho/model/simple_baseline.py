@@ -1,4 +1,5 @@
 """A simple baseline model for testing."""
+
 from pathlib import Path
 from typing import override
 
@@ -44,14 +45,12 @@ class SimpleBaseLine(base.BaseModel):
         """
         self.percentile = percentile
 
-
     @override
     def fit(
         self,
         data_dir: Path | str,
     ) -> "SimpleBaseLine":
         return self
-
 
     @override
     def predict(

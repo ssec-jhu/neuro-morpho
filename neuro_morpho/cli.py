@@ -1,8 +1,8 @@
 from pathlib import Path
-import fire
 
 import neuro_morpho.model.base as base
 from neuro_morpho.reports import generator
+
 
 def run(
     model: base.BaseModel,
@@ -30,24 +30,3 @@ def run(
     model.predict_dir(testing_dir, test_output_dir)
     generator.generate_report(test_output_dir, testing_dir, report_output_dir)
     generator.generate_plots(report_output_dir)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

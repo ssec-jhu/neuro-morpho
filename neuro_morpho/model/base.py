@@ -10,7 +10,7 @@ ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 class BaseModel:
     """Base class for all models to implement"""
 
-    def fit(self, data_dir:str|Path) -> "BaseModel":
+    def fit(self, data_dir: str | Path) -> "BaseModel":
         """Fit the model to the data.
 
         Args:
@@ -22,7 +22,7 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
-    def predict_dir(self, in_dir: str | Path, out_dir:str|Path) -> np.ndarray:
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> np.ndarray:
         """Predict the output for all images in the given directory.
 
         Args:

@@ -7,9 +7,9 @@ import pandas as pd
 
 ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 
-MODEL_OUT_DIR = str|Path
-LABEL_DIR = str|Path
-REPORT_FNAME = str|Path
+MODEL_OUT_DIR = str | Path
+LABEL_DIR = str | Path
+REPORT_FNAME = str | Path
 report_fn = Callable[[MODEL_OUT_DIR, LABEL_DIR, REPORT_FNAME], None]
 
 
