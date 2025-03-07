@@ -12,6 +12,11 @@ ERR_INVALID_DIST = f"Invalid distance type. Must be one of {VALID_DISTANCES}"
 
 SKELETON_STAT_FN = Callable[[pd.DataFrame], np.ndarray]
 
+STAT_N_BRANCHES = "n_branches"
+STAT_N_TIP_POINTS = "n_tip_points"
+STAT_TOTAL_LENGTH = "total_length"
+STAT_BRANCH_LENGTHS = "branch_lengths"
+
 
 def extract_branch_ids(skan_skel_data: pd.DataFrame) -> set[int]:
     """Extract the branch ids from the skan skeleton data.

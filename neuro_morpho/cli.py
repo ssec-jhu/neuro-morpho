@@ -6,10 +6,13 @@ from neuro_morpho.reports import generator
 
 def run(
     model: base.BaseModel,
-    training_dir: str | Path,
-    testing_dir: str | Path,
+    training_x_dir: str | Path,
+    training_y_dir: str | Path,
+    testing_x_dir: str | Path,
+    testing_y_dir: str | Path,
     model_save_dir: str | Path,
-    test_output_dir: str | Path,
+    model_out_y_dir: str | Path,
+    stats_output_dir: str | Path,
     report_output_dir: str | Path,
 ):
     """Run the model on the data and save the results.
@@ -20,13 +23,22 @@ def run(
         output_dir (str|Path): The directory to save the results
     """
 
-    training_dir = Path(training_dir)
-    testing_dir = Path(testing_dir)
+    training_x_dir = Path(training_x_dir)
+    training_y_dir = Path(training_y_dir)
+    testing_x_dir = Path(testing_x_dir)
+    testing_y_dir = Path(testing_y_dir)
+    model_out_y_dir = Path(model_out_y_dir)
     model_save_dir = Path(model_save_dir)
 
-    model = model.fit(training_dir)
+    model = model.fit(
+        training_x_dir,
+        training_y_dir,
+        testing_x_dir,
+        testing_y_dir,
+    )
     model.save(model_save_dir)
 
-    model.predict_dir(testing_dir, test_output_dir)
-    generator.generate_report(test_output_dir, testing_dir, report_output_dir)
-    generator.generate_plots(report_output_dir)
+    model.predict_dir(testing_x_dir, model_out_y_dir)
+    generator.generate_statistics(model_out_y_dir, stats_output_dir)
+    generator.generate_statistics(testing_y_dir, stats_output_dir)
+    generator.generate_report(stats_output_dir, report_output_dir)
