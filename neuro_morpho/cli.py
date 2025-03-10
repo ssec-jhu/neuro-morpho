@@ -56,7 +56,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--config",
+        "config",
         type=str,
         required=True,
         default="config.gin",
