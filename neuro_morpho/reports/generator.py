@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import gin
 import pandas as pd
 import skimage as ski
 
@@ -59,6 +60,9 @@ def generate_statistics(
     in_dir: str | Path,
     out_dir: str | Path,
 ) -> None:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     in_pairs = list(
         map(
             lambda x: (x, out_dir / x.name),
@@ -72,11 +76,15 @@ def generate_statistics(
     _aggregate_results(out_dir, out_dir)
 
 
+@gin.configurable(allowlist=["reports"])
 def generate_report(
     labeled_out_dir: str | Path,
     model_out_dir: str | Path,
     report_out_path: str | Path,
     reports: list[nm_reports.report_fn],
 ) -> None:
+    report_out_path = Path(report_out_path)
+    report_out_path.mkdir(parents=True, exist_ok=True)
+
     for report_fn in reports:
         report_fn(labeled_out_dir, model_out_dir, report_out_path)

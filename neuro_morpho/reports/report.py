@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
+import gin
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -30,6 +31,7 @@ def transform_filename_to_group(filename: str) -> str:
     return group
 
 
+@gin.register
 def noboxplot_summary(
     model_out_dir: MODEL_OUT_DIR,
     label_dir: LABEL_DIR,

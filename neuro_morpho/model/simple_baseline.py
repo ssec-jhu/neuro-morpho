@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import override
 
+import gin
 import numpy as np
 import scipy.ndimage as ndi
 import skimage.morphology
@@ -34,6 +35,7 @@ def make_binary(
     return binarized
 
 
+@gin.configurable(allowlist=["percentile"])
 class SimpleBaseLine(base.BaseModel):
     """A simple baseline model for testing."""
 
