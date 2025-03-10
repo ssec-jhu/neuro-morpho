@@ -58,7 +58,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "config",
         type=str,
-        required=True,
         default="config.gin",
         help="The path to the gin configuration file.",
     )
