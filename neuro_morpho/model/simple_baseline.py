@@ -6,7 +6,9 @@ from typing import override
 import gin
 import numpy as np
 import scipy.ndimage as ndi
+import skimage as ski
 import skimage.morphology
+from tqdm import tqdm
 
 import neuro_morpho.model.base as base
 
@@ -39,21 +41,26 @@ def make_binary(
 class SimpleBaseLine(base.BaseModel):
     """A simple baseline model for testing."""
 
-    def __init__(self, percentile: int = 95):
+    def __init__(self, percentile: int = 95, name: str|None = None):
         """Initialize the model.
 
         Args:
             percentile (int, optional): The percentile to use as the threshold. Defaults to 95.
         """
         self.percentile = percentile
+        self.name = name or "simple_base_line"
 
     @override
     def fit(
         self,
-        data_dir: Path | str,
+        training_x_dir: Path | str,
+        training_y_dir: Path | str,
+        testing_x_dir: Path | str,
+        testing_y_dir: Path | str,
     ) -> "SimpleBaseLine":
         return self
 
+    
     @override
     def predict(
         self,
@@ -63,9 +70,27 @@ class SimpleBaseLine(base.BaseModel):
         x = make_binary(x, self.percentile)
         return np.expand_dims(x, axis=-1)
 
+    
+    @override
+    def predict_dir(
+        self,
+        in_dir: str | Path,
+        out_dir: str | Path,
+    ) -> None:
+        in_dir = Path(in_dir)
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        for in_file in tqdm(in_dir.glob("*.pgm")):
+            x = ski.io.imread(in_file)
+            y = np.squeeze(self.predict(np.expand_dims(x, axis=-1)), axis=-1)
+            ski.io.imsave(out_dir / in_file.name, y, check_contrast=False)
+            
+
     @override
     def save(self, path: Path | str) -> None:
-        with Path(path).open("w") as f:
+        fname = self.name + ".txt"
+        with (Path(path) / fname).open("w") as f:
             f.write(str(self.percentile))
 
     @override

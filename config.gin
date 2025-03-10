@@ -1,5 +1,6 @@
 import neuro_morpho.model.simple_baseline
 import neuro_morpho.reports.generator
+import neuro_morpho.cli
 
 SimpleBaseLine.percentile = 95
 
@@ -8,12 +9,12 @@ generate_report.reports = [
 ]
 
 
-cli.run.model = @SimpleBaseLine()
-cli.run.training_x_dir = "data/processed/train/imgs"
-cli.run.training_y_dir = "data/processed/train/lbls"
-cli.run.testing_x_dir = "data/processed/test/imgs"
-cli.run.testing_y_dir = "data/processed/test/lbls"
-cli.run.model_save_dir = "models"
-cli.run.model_out_y_dir = "data/output"
-cli.run.stats_output_dir = "data/stats"
-cli.run.report_output_dir = "data/report"
+run.model = @SimpleBaseLine()
+run.training_x_dir = "data/processed/train/imgs"
+run.training_y_dir = "data/processed/train/lbls"
+run.testing_x_dir = "data/processed/test/imgs"
+run.testing_y_dir = "data/processed/test/lbls"
+run.model_save_dir = "models"
+run.model_out_y_dir = "data/output"
+run.stats_output_dir = "data/stats"
+run.report_output_dir = "data/report"

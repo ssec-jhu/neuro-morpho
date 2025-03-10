@@ -73,13 +73,13 @@ def generate_statistics(
     for in_file, out_file in in_pairs:
         _parse_single_file(in_file, out_file)
 
-    _aggregate_results(out_dir, out_dir)
+    _aggregate_results(out_dir)
 
 
 @gin.configurable(allowlist=["reports"])
 def generate_report(
-    labeled_out_dir: str | Path,
     model_out_dir: str | Path,
+    labeled_out_dir: str | Path,
     report_out_path: str | Path,
     reports: list[nm_reports.report_fn],
 ) -> None:
@@ -87,4 +87,4 @@ def generate_report(
     report_out_path.mkdir(parents=True, exist_ok=True)
 
     for report_fn in reports:
-        report_fn(labeled_out_dir, model_out_dir, report_out_path)
+        report_fn(model_out_dir, labled_out_dir, report_out_path)
