@@ -41,7 +41,7 @@ def make_binary(
 class SimpleBaseLine(base.BaseModel):
     """A simple baseline model for testing."""
 
-    def __init__(self, percentile: int = 95, name: str|None = None):
+    def __init__(self, percentile: int = 95, name: str | None = None):
         """Initialize the model.
 
         Args:
@@ -60,7 +60,6 @@ class SimpleBaseLine(base.BaseModel):
     ) -> "SimpleBaseLine":
         return self
 
-    
     @override
     def predict(
         self,
@@ -70,7 +69,6 @@ class SimpleBaseLine(base.BaseModel):
         x = make_binary(x, self.percentile)
         return np.expand_dims(x, axis=-1)
 
-    
     @override
     def predict_dir(
         self,
@@ -85,11 +83,10 @@ class SimpleBaseLine(base.BaseModel):
             x = ski.io.imread(in_file)[np.newaxis, :, :, np.newaxis]
             y = self.predict(x)[0, :, :, 0]
             ski.io.imsave(
-                out_dir / in_file.name, 
-                (y*65535).astype(np.int16), 
+                out_dir / in_file.name,
+                (y * 65535).astype(np.int16),
                 check_contrast=False,
             )
-            
 
     @override
     def save(self, path: Path | str) -> None:

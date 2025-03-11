@@ -49,7 +49,7 @@ def run(
     generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
     generator.generate_statistics(testing_y_dir, labled_stats_outpur_dir)
     generator.generate_report(
-        model_stats_output_dir, 
-        labled_stats_outpur_dir, 
+        model_stats_output_dir,
+        labled_stats_outpur_dir,
         report_output_dir,
     )
