@@ -12,12 +12,13 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "config",
+        nargs="?",
         type=str,
-        default="config.gin",
         help="The path to the gin configuration file.",
     )
 
     args = parser.parse_args()
-    print(f"Loading gin config from {args.config}")
-    gin.parse_config_file(args.config)
+    config = args.config or "config.gin"
+    print(f"Loading gin config from {config}")
+    gin.parse_config_file(config)
     run.run()

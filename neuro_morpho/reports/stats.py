@@ -2,6 +2,7 @@
 
 from typing import Callable
 
+import gin
 import numpy as np
 import pandas as pd
 import skan
@@ -35,7 +36,7 @@ def extract_branch_ids(skan_skel_data: pd.DataFrame) -> set[int]:
     )
     return set(ids[cnts > 1])
 
-
+@gin.configurable(allowlist=["include_isolated_branches","include_isolated_cycles"])
 def calculate_n_branches(
     skan_skel_data: pd.DataFrame,
     *,
@@ -56,7 +57,7 @@ def calculate_n_branches(
 
     return len(skan_skel_data[skan_skel_data["branch_type"].isin(set(types_to_include))])
 
-
+@gin.configurable(allowlist=["include_isolated_branches",])
 def calculate_n_tip_points(
     skan_skel_data: pd.DataFrame,
     *,
@@ -77,6 +78,7 @@ def calculate_n_tip_points(
     return len(skan_skel_data[skan_skel_data["branch_type"].isin(set(types_to_include))])
 
 
+@gin.configurable(allowlist=["dist_type",])
 def calculate_total_length(
     skan_skel_data: pd.DataFrame,
     dist_type: str = "euclidean",
@@ -95,7 +97,7 @@ def calculate_total_length(
 
     return calculate_branch_lengths(skan_skel_data, dist_type).sum()
 
-
+@gin.configurable(allowlist=["dist_type",])
 def calculate_branch_lengths(skan_skel_data: pd.DataFrame, dist_type: str = "euclidean") -> np.ndarray:
     """Calculate the lengths of each branch in the skeleton data.
 
@@ -120,6 +122,7 @@ def calculate_branch_lengths(skan_skel_data: pd.DataFrame, dist_type: str = "euc
     return distances
 
 
+@gin.configurable(allowlist=["stat_fns", "pixel_size", "assume_single_skeleton",])
 def skeleton_analysis(
     skeleton: np.ndarray,
     stat_fns: tuple[list[str], list[SKELETON_STAT_FN]],

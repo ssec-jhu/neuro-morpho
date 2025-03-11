@@ -82,9 +82,13 @@ class SimpleBaseLine(base.BaseModel):
         out_dir.mkdir(parents=True, exist_ok=True)
 
         for in_file in tqdm(in_dir.glob("*.pgm")):
-            x = ski.io.imread(in_file)
-            y = np.squeeze(self.predict(np.expand_dims(x, axis=-1)), axis=-1)
-            ski.io.imsave(out_dir / in_file.name, y, check_contrast=False)
+            x = ski.io.imread(in_file)[np.newaxis, :, :, np.newaxis]
+            y = self.predict(x)[0, :, :, 0]
+            ski.io.imsave(
+                out_dir / in_file.name, 
+                (y*65535).astype(np.int16), 
+                check_contrast=False,
+            )
             
 
     @override
