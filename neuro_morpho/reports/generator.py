@@ -32,11 +32,14 @@ def _aggregate_results(
     for stat_file in stat_files:
         with stat_file.open() as f:
             stats = json.load(f)
-            for k, v in stats.items():
-                aggregated[k].append(v)
+            fname = stats.pop("filename")
+            for skeleton_id, skeleton_stats in stats.items():
+                aggregated["filename"].append(fname)
+                for stat, val in skeleton_stats.items():
+                    aggregated[stat].append(val)
 
     aggregated_df = pd.DataFrame(aggregated)
-    aggregated_df.to_csv(stats_dir / "aggregated_results.csv")
+    aggregated_df.to_csv(stats_dir / "aggregated_results.csv", index=False)
 
     return aggregated_df
 
@@ -46,7 +49,7 @@ def _parse_single_file(
     output_file: str | Path,
 ) -> None:
     skeleton_stats = {
-        "fname": input_file,
+        "filename": str(input_file),
         **nm_stats.skeleton_analysis(
             ski.io.imread(input_file),
         ),
@@ -65,7 +68,7 @@ def generate_statistics(
 
     in_pairs = list(
         map(
-            lambda x: (x, out_dir / x.name),
+            lambda x: (x, out_dir / x.name.replace("pgm", "json")),
             Path(in_dir).glob("*.pgm"),
         )
     )
@@ -87,4 +90,4 @@ def generate_report(
     report_out_path.mkdir(parents=True, exist_ok=True)
 
     for report_fn in reports:
-        report_fn(model_out_dir, labled_out_dir, report_out_path)
+        report_fn(model_out_dir, labeled_out_dir, report_out_path)

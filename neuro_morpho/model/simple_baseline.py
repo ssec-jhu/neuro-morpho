@@ -81,7 +81,7 @@ class SimpleBaseLine(base.BaseModel):
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        for in_file in tqdm(in_dir.glob("*.pgm")):
+        for in_file in tqdm(list(in_dir.glob("*.pgm")), desc="Predicting"):
             x = ski.io.imread(in_file)[np.newaxis, :, :, np.newaxis]
             y = self.predict(x)[0, :, :, 0]
             ski.io.imsave(

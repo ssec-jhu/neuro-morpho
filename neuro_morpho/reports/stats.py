@@ -138,6 +138,12 @@ def skeleton_analysis(
             use for the analysis.
         pixel_size (float): The size of the pixel in the image.
     """
+    # empty skeleton
+    if not skeleton.any():
+        return {
+            1: {stat_name: 0 for stat_name, _ in stat_fns}
+        }
+    
     skeleton = skan.Skeleton(skeleton, spacing=pixel_size)
     # branch_data is a pandas DataFrame
     # branch_type can be one of the following:

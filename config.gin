@@ -17,9 +17,9 @@ calculate_total_length.dist_type = "euclidean"
 skeleton_analysis.pixel_size = 1
 skeleton_analysis.assume_single_skeleton = True
 skeleton_analysis.stat_fns = [
-    @calculate_n_branches,
-    @calculate_n_tip_points,
-    @calculate_total_length,
+    ("Number of Branches", @calculate_n_branches),
+    ("Number of Tips", @calculate_n_tip_points),
+    ("Total Length", @calculate_total_length),
 ]
 
 
@@ -32,5 +32,5 @@ run.testing_y_dir = "data/processed/test/lbls"
 run.model_save_dir = "models"
 run.model_out_y_dir = "data/output"
 run.model_stats_output_dir = "data/stats/model"
-run.labled_stats_outpur_dir = "data/stats/lbl"
+run.labled_stats_outpur_dir = "data/stats/label"
 run.report_output_dir = "data/report"

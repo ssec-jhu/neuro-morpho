@@ -43,7 +43,7 @@ def noboxplot_summary(
     aggregated_model = pd.read_csv(model_out_dir / "aggregated_results.csv")
     aggregated_label = pd.read_csv(label_dir / "aggregated_results.csv")
 
-    if aggregated_label.columns != aggregated_model.columns:
+    if list(aggregated_label.columns) != list(aggregated_model.columns):
         raise ValueError(ERR_COLS_DONT_MATCH)
 
     if "filename" not in aggregated_model.columns:
@@ -54,9 +54,9 @@ def noboxplot_summary(
     aggregated_label["filename"] = "Label"
 
     plotting_df = pd.concat([aggregated_model, aggregated_label])
-    plotting_df["filename"] = plotting_df["filename"].apply(transform_filename_to_group)
+    plotting_df["filename"] = plotting_df["filename"].apply(lambda x: transform_filename_to_group(str(x)))
 
-    plotting_columns = list(plotting_df.columns)
+    plotting_columns = list(plotting_df.columns.values)
     plotting_columns.remove("filename")
 
     # Generate the summary
@@ -65,7 +65,8 @@ def noboxplot_summary(
     for ax, col in zip(axes, plotting_columns):
         # here we need to transpose the file name column scuh that the unique values
         # are now the the columns and the volues of `col` are the rows
-        pivot_df = plotting_df.loc[:, ["filename", col]].pivot(index=col, columns="filename")
+        pivot_df = plotting_df.loc[:, ["filename", col]].pivot(columns="filename")
+        pivot_df.columns = pivot_df.columns.droplevel()
         nm_plots.plot_sabya(pivot_df, ax=ax, ax_ylabel=col)
 
     f.tight_layout()

@@ -36,8 +36,8 @@ def plot_sabya(
 
     arr = data.to_numpy()
 
-    mean = np.mean(arr, axis=0)
-    std = np.std(arr, axis=0)
+    mean = np.nanmean(arr, axis=0)
+    std = np.nanstd(arr, axis=0)
     sem = std / np.sqrt(arr.shape[0])
 
     locs = np.arange(arr.shape[1])
@@ -76,8 +76,8 @@ def plot_sabya(
         )
 
     ax.set_ylim(
-        arr.min() - 2 * std.min(),
-        arr.max() + 2 * std.max(),
+        np.nanmin(arr) - 2 * std.min(),
+        np.nanmax(arr) + 2 * std.max(),
     )
     ax.set_ylabel(ax_ylabel)
 
