@@ -1,0 +1,4 @@
+[core]
+    remote = myremote
+['remote "myremote"']
+    url = /home/idies/workspace/ssec_neural_morphology/dvcstore

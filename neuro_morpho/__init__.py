@@ -1,4 +1,4 @@
-__project__ = "neuro_morpho"  # Replace neuro_morpho with actual name (it's just a template).
+__project__ = "neuro_morpho"
 
 try:
     from ._version import __version__

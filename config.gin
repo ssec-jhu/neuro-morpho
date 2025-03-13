@@ -1,0 +1,36 @@
+import neuro_morpho.model.simple_baseline
+import neuro_morpho.reports.generator
+import neuro_morpho.reports.stats
+import neuro_morpho.cli
+
+SimpleBaseLine.percentile = 95
+
+generate_report.reports = [
+    @noboxplot_summary,
+]
+
+calculate_n_branches.include_isolated_branches = False
+calculate_n_branches.include_isolated_cycles = False
+calculate_n_tip_points.include_isolated_branches = False
+calculate_total_length.dist_type = "euclidean"
+
+skeleton_analysis.pixel_size = 1
+skeleton_analysis.assume_single_skeleton = True
+skeleton_analysis.stat_fns = [
+    ("Number of Branches", @calculate_n_branches),
+    ("Number of Tips", @calculate_n_tip_points),
+    ("Total Length", @calculate_total_length),
+]
+
+
+
+run.model = @SimpleBaseLine()
+run.training_x_dir = "data/processed/train/imgs"
+run.training_y_dir = "data/processed/train/lbls"
+run.testing_x_dir = "data/processed/test/imgs"
+run.testing_y_dir = "data/processed/test/lbls"
+run.model_save_dir = "models"
+run.model_out_y_dir = "data/output"
+run.model_stats_output_dir = "data/stats/model"
+run.labled_stats_outpur_dir = "data/stats/label"
+run.report_output_dir = "data/report"
