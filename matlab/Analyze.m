@@ -44,6 +44,7 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.Prune = 1;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
 params.SaveWorkspace = 0;
@@ -55,9 +56,9 @@ for sbr=1:5
         p=parpool('local',N_neurons);
         parfor ii=1:N_neurons
             cntr = N_neurons * (cycle - 1) + ii;
-            filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-                'Simulations_16bit_Size1024/output/ex8/evaluation/'], ...
-                num2str(sbr), '-Sample-', num2str(cntr),'-time-36.00_pred_bin.tif');
+            filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+                'Simulations_16bit_Size3334/output/ex8/evaluation/'], ...
+                num2str(sbr), '-Sample-', num2str(cntr),'-time-100.00_pred_bin.tif');
             fprintf('%s\n', filename);
             Im=imread(filename);
             BW=logical(Im);
@@ -65,6 +66,7 @@ for sbr=1:5
             try
                 Skeletonized_Unet(ii,1)=Scan_Video(BW,Im,params,info);
             catch ME
+                Skeletonized_Unet(ii,1) = struct()
                 disp(['Error occured while processing the file ', filename]);
                 continue;
             end
@@ -108,6 +110,7 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.Prune = 1;
 params.SaveBinary = 0;
 params.SaveSWC = 1;
 params.SaveWorkspace = 1;
@@ -119,9 +122,9 @@ for sbr=1:5
         p=parpool('local',N_neurons);
         parfor ii=1:N_neurons
             cntr = N_neurons * (cycle - 1) + ii;
-            filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-                'Simulations_16bit_Size1024/output/ex8/evaluation/'], ...
-                num2str(sbr), '-Sample-', num2str(cntr),'-time-36.00_pred.tif');
+            filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+                'Simulations_16bit_Size3334/output/ex8/evaluation/'], ...
+                num2str(sbr), '-Sample-', num2str(cntr),'-time-100.00_pred.tif');
             fprintf('%s\n', filename);
             Im=imread(filename);
             BW=make_binary(Im,params.WindowSize,params.WindowType);
@@ -129,6 +132,7 @@ for sbr=1:5
             try
                 Predicted_Unet(ii,1)=Scan_Video(BW,Im,params,info);
             catch ME
+                Predicted_Unet(ii,1) = struct()
                 disp(['Error occured while processing the file ', filename]);
                 continue;
             end
@@ -172,6 +176,7 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.Prune = 1;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
 params.SaveWorkspace = 0;
@@ -182,9 +187,9 @@ for cycle=1:10
     p=parpool('local',N_neurons);
     parfor ii=1:N_neurons
         cntr = N_neurons * (cycle - 1) + ii;
-        filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-           'Simulations_16bit_Size1024/images/Skeleton-Sample-'], ...
-           num2str(cntr),'-time-36.00.pgm');
+        filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+           'Simulations_16bit_Size3334/images/Skeleton-Sample-'], ...
+           num2str(cntr),'-time-100.00.pgm');
         fprintf('%s\n', filename);
         Im=imread(filename);
         BW=logical(Im);
@@ -192,6 +197,7 @@ for cycle=1:10
         try
             Skeletonized(ii,1)=Scan_Video(BW,Im,params,info);
         catch ME
+            Skeletonized(ii,1) = struct()
             disp(['Error occured while processing the file ', filename]);
             continue;
         end
@@ -231,6 +237,7 @@ params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.Prune = 1;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
 params.SaveWorkspace = 0;
@@ -241,9 +248,9 @@ for cycle=1:10
     p=parpool('local',N_neurons);
     parfor ii=1:N_neurons
         cntr = N_neurons * (cycle - 1) + ii;
-        filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-           'Simulations_16bit_Size1024/images/Segmented-Sample-'], ...
-           num2str(cntr),'-time-36.00.pgm');
+        filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+           'Simulations_16bit_Size3334/images/Segmented-Sample-'], ...
+           num2str(cntr),'-time-100.00.pgm');
         fprintf('%s\n', filename);
         Im=imread(filename);
         BW=logical(Im);
@@ -251,6 +258,7 @@ for cycle=1:10
         try
             Segmented(ii,1)=Scan_Video(BW,Im,params,info);
         catch ME
+            Segmented(ii,1) = struct()
             disp(['Error occured while processing the file ', filename]);
             continue;
         end
@@ -286,11 +294,12 @@ addpath(genpath('QNMorph_V1.2.1'))
 addpath(genpath('ReadWrite_SWC'))
 params.WindowType='average';
 params.WindowSize=13;
-params.pixelsize=0.25;
+params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
 params.Soma=[512,512];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
+params.Prune = 0;
 params.SaveBinary = 1;
 params.SaveSWC = 0;
 params.SaveWorkspace = 0;
@@ -303,9 +312,9 @@ for sbr=1:5
         parfor ii=1:N_neurons
         %for ii=1:N_neurons
             cntr = N_neurons * (cycle - 1) + ii;
-            filename=strcat(['../../../../OneDrive/NeuralMorphology/Simulations/' ...
-                'Simulations_16bit_Size1024/images/Realistic-SBR-'],num2str(sbr), ...
-                '-Sample-',num2str(cntr),'-time-36.00.pgm');
+            filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+                'Simulations_16bit_Size3334/images/Realistic-SBR-'],num2str(sbr), ...
+                '-Sample-',num2str(cntr),'-time-100.00.pgm');
             fprintf('%s\n', filename);
             Im=imread(filename);
             BW=make_binary(Im,params.WindowSize,params.WindowType);
@@ -313,6 +322,7 @@ for sbr=1:5
             try
                 Realistic(ii,1)=Scan_Video(BW,Im,params,info);
             catch ME
+                Realistic(ii,1) = struct();
                 disp(['Error occured while processing the file ', filename]);
                 continue;
             end
