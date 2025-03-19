@@ -39,15 +39,15 @@ addpath(genpath('QNMorph_V1.2.1'))
 addpath(genpath('ReadWrite_SWC'))
 params.WindowType='average';
 params.WindowSize=13;
-params.pixelsize=0.25;
+params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
-params.Soma=[512,512];%%%%in pixel
+params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
-params.Prune = 1;
+params.Prune = 0;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
-params.SaveWorkspace = 0;
+params.SaveWorkspace = 1;
 
 for sbr=1:5
     Skeleton_Unet = struct();
@@ -70,14 +70,16 @@ for sbr=1:5
                 disp(['Error occured while processing the file ', filename]);
                 continue;
             end
-            % Convert the result to SWC file
-            [filepath, swc_filename, ext] = fileparts(filename);
-            swc_filename = strrep(swc_filename, '_pred_bin', '_fromUnet-SBR-');
-            idx = find(swc_filename == '-', 1);
-            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
-                swc_filename(1:idx-1), '.swc');
-            fprintf('%s\n', swc_filename);
-            Write_SWCFromMAT(Skeletonized_Unet(ii,1), swc_filename);
+            
+            if (params.SaveSWC == 1) % Convert the result to SWC file
+                [filepath, swc_filename, ext] = fileparts(filename);
+                swc_filename = strrep(swc_filename, '_pred_bin', '_fromUnet-SBR-');
+                idx = find(swc_filename == '-', 1);
+                swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
+                    swc_filename(1:idx-1), '.swc');
+                fprintf('%s\n', swc_filename);
+                Write_SWCFromMAT(Skeletonized_Unet(ii,1), swc_filename);
+            end
         end
         if (cycle == 1)
             Skeleton_Unet = Skeletonized_Unet;
@@ -105,14 +107,14 @@ addpath(genpath('QNMorph_V1.2.1'))
 addpath(genpath('ReadWrite_SWC'))
 params.WindowType='average';
 params.WindowSize=13;
-params.pixelsize=0.25;
+params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
-params.Soma=[512,512];%%%%in pixel
+params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
-params.Prune = 1;
+params.Prune = 0;
 params.SaveBinary = 0;
-params.SaveSWC = 1;
+params.SaveSWC = 0;
 params.SaveWorkspace = 1;
 
 for sbr=1:5
@@ -136,14 +138,16 @@ for sbr=1:5
                 disp(['Error occured while processing the file ', filename]);
                 continue;
             end
-            % Convert the result to SWC file
-            [filepath, swc_filename, ext] = fileparts(filename);
-            swc_filename = strrep(swc_filename, '_pred', '_fromUnet_pred-SBR-');
-            idx = find(swc_filename == '-', 1);
-            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
-                swc_filename(1:idx-1), '.swc');
-            fprintf('%s\n', swc_filename);
-            Write_SWCFromMAT(Predicted_Unet(ii,1), swc_filename);
+            
+            if (params.SaveSWC == 1) % Convert the result to SWC file
+                [filepath, swc_filename, ext] = fileparts(filename);
+                swc_filename = strrep(swc_filename, '_pred', '_fromUnet_pred-SBR-');
+                idx = find(swc_filename == '-', 1);
+                swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), ...
+                    swc_filename(1:idx-1), '.swc');
+                fprintf('%s\n', swc_filename);
+                Write_SWCFromMAT(Predicted_Unet(ii,1), swc_filename);
+            end
         end
         if (cycle == 1)
             Prediction_Unet = Predicted_Unet;
@@ -171,15 +175,15 @@ addpath(genpath('QNMorph_V1.2.1'))
 addpath(genpath('ReadWrite_SWC'))
 params.WindowType='average';
 params.WindowSize=13;
-params.pixelsize=0.25;
+params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
-params.Soma=[512,512];%%%%in pixel
+params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
-params.Prune = 1;
+params.Prune = 0;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
-params.SaveWorkspace = 0;
+params.SaveWorkspace = 1;
 
 Skeleton = struct();
 for cycle=1:10
@@ -201,12 +205,14 @@ for cycle=1:10
             disp(['Error occured while processing the file ', filename]);
             continue;
         end
-        % Convert the result to SWC file
-        [filepath, swc_filename, ext] = fileparts(filename);
-        idx = find(swc_filename == '-', 1);
-        swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), '_fromSkeleton.swc'); 
-        fprintf('%s\n', swc_filename);
-        Write_SWCFromMAT(Skeletonized(ii,1), swc_filename);
+        
+        if (params.SaveSWC == 1) % Convert the result to SWC file
+            [filepath, swc_filename, ext] = fileparts(filename);
+            idx = find(swc_filename == '-', 1);
+            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), '_fromSkeleton.swc'); 
+            fprintf('%s\n', swc_filename);
+            Write_SWCFromMAT(Skeletonized(ii,1), swc_filename);
+        end
     end
     if (cycle == 1)
         Skeleton = Skeletonized;
@@ -232,15 +238,15 @@ addpath(genpath('QNMorph_V1.2.1'))
 addpath(genpath('ReadWrite_SWC'))
 params.WindowType='average';
 params.WindowSize=13;
-params.pixelsize=0.25;
+params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
-params.Soma=[512,512];%%%%in pixel
+params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
-params.Prune = 1;
+params.Prune = 0;
 params.SaveBinary = 0;
 params.SaveSWC = 0;
-params.SaveWorkspace = 0;
+params.SaveWorkspace = 1;
 
 Segment = struct();
 for cycle=1:10
@@ -263,12 +269,13 @@ for cycle=1:10
             continue;
         end
 
-        % Convert the result to SWC file
-        [filepath, swc_filename, ext] = fileparts(filename);
-        idx = find(swc_filename == '-', 1);
-        swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), '_fromSegmented.swc'); 
-        fprintf('%s\n', swc_filename);
-        Write_SWCFromMAT(Segmented(ii,1), swc_filename);
+        if (params.SaveSWC == 1) % Convert the result to SWC file
+            [filepath, swc_filename, ext] = fileparts(filename);
+            idx = find(swc_filename == '-', 1);
+            swc_filename = strcat(filepath,'/SWC', swc_filename(idx:end), '_fromSegmented.swc'); 
+            fprintf('%s\n', swc_filename);
+            Write_SWCFromMAT(Segmented(ii,1), swc_filename);
+        end
     end
     if (cycle == 1)
         Segment = Segmented;
@@ -297,12 +304,12 @@ params.WindowSize=13;
 params.pixelsize=0.16;
 params.Topology=1;
 params.Fine=1;
-params.Soma=[512,512];%%%%in pixel
+params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
 params.Prune = 0;
-params.SaveBinary = 1;
+params.SaveBinary = 0;
 params.SaveSWC = 0;
-params.SaveWorkspace = 0;
+params.SaveWorkspace = 1;
 
 for sbr=1:5
     Real = struct();
