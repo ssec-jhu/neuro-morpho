@@ -23,15 +23,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import itertools
+from pathlib import Path
 from typing import override
 
+import gin
 import numpy as np
 import torch
 import torch.nn as nn
 
 import neuro_morpho.model.base as base
 
+ERR_PREDICT_DIR_NOT_IMPLEMENTED = "The predict_dir method is not implemented, because you might be tiling"
 
+
+@gin.configurable
 class UNet(base.BaseModel):
     def __init__(
         self,
@@ -51,8 +56,21 @@ class UNet(base.BaseModel):
         self.device = device
 
     @override
-    def predict(self, x: np.ndarray) -> np.ndarray:
-        return self.model(torch.from_numpy(x).float()).squeeze(1).cpu().detach().numpy()
+    def predict_dir(self, in_dir, out_dir):
+        raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
+
+    @override
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        return self.model(torch.from_numpy(x).float().to(self.device)).squeeze(1).cpu().detach().numpy()
+
+    @override
+    def save(self, path: str | Path) -> None:
+        torch.save(self.model.state_dict(), path)
+
+    @override
+    def load(self, path: str | Path) -> None:
+        self.model.load_state_dict(torch.load(path, map_location=self.device))
+        self.model.eval()
 
 
 class UNetModule(nn.Module):
