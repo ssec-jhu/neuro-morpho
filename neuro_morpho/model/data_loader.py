@@ -49,14 +49,17 @@ class NeuroMorphoDataset(td.Dataset):
 
         img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)  # [h, w, 1]
         lbl = cv2.imread(str(lbl))  # [h, w, n_lbls]
-
-        stack = torch.stack(
-            [torch.transpose(torch.from_numpy(img), 0, 2), torch.transpose(torch.from_numpy(lbl), 0, 2)],
+        
+        stack = torch.cat(
+            [
+                torch.transpose(torch.atleast_3d(torch.from_numpy(img)), 0, 2).float(),
+                torch.transpose(torch.from_numpy(lbl), 0, 2).float(),
+            ],
             dim=0,
         )  # [n_lbls+1, h, w]
 
-        if self.transform:
-            stack = self.transform(stack)
+        if self.aug_transform:
+            stack = self.aug_transform(stack)
 
         img = stack[:1, ...]  # [1, h, w]
         lbl = stack[1:, ...]  # [n_lbls, h, w]
@@ -114,7 +117,7 @@ def build_dataloader(
 if __name__ == "__main__":
     # Test the data loader
     data_dir = Path("data/processed/train")
-    dataloader = build_dataloader(data_dir, batch_size=1, num_workers=0)
+    dataloader = build_dataloader(data_dir, batch_size=2, num_workers=0)
     for x, y in dataloader:
         print(x.shape, y.shape)
         break
