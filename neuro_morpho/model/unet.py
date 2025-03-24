@@ -33,7 +33,9 @@ import torch.nn as nn
 
 import neuro_morpho.model.base as base
 
-ERR_PREDICT_DIR_NOT_IMPLEMENTED = "The predict_dir method is not implemented, because you might be tiling"
+ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
+    "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
+)
 
 
 @gin.configurable
@@ -58,6 +60,29 @@ class UNet(base.BaseModel):
     @override
     def predict_dir(self, in_dir, out_dir):
         raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
+
+    @gin.configurable()
+    def fit(
+        self,
+        training_x_dir: str | Path,
+        training_y_dir: str | Path,
+        testing_x_dir: str | Path,
+        testing_y_dir: str | Path,
+        data_loader: base.DataLoader = None,
+    ) -> base.BaseModel:
+        if data_loader is None:
+            data_loader = base.DataLoader(
+                training_x_dir,
+                training_y_dir,
+                testing_x_dir,
+                testing_y_dir,
+            )
+
+        # Training logic here
+        # ...
+        # self.model.train()
+
+        return self
 
     @override
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
