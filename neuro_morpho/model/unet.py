@@ -24,6 +24,7 @@
 # SOFTWARE.
 import functools
 import itertools
+from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, override
@@ -105,6 +106,7 @@ class UNet(base.BaseModel):
             test_data_loader = data_loader.DataLoader(testing_x_dir, testing_y_dir)
 
         for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
+            self.model.train()
             for i, (x, y) in tqdm(enumerate(train_data_loader), desc="Training", unit="batch", position=1):
                 optimizer.zero_grad()
 
@@ -113,7 +115,7 @@ class UNet(base.BaseModel):
 
                 pred = self.model(x)
                 losses = loss_fn(pred, y)
-                loss = sum(losses) if isinstance(losses, tuple) else losses
+                loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, tuple) else losses[1]
                 loss.backward()
                 optimizer.step()
 
@@ -127,23 +129,45 @@ class UNet(base.BaseModel):
 
                     sample_x = detch_fn(x)
                     sample_y = detch_fn(y)
-                    sample_y = detch_fn(y)
                     sample_pred = detch_fn(pred)
                     logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
 
-                    # add image logging
-
+            self.model.eval()
+            loss_numerator = defaultdict(float)
+            loss_denominator = defaultdict(int)
             for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
                 with torch.no_grad():
-                    x = self.cast_fn(x)
-                    y = self.cast_fn(y) if not isinstance(y, tuple) else tuple(map(self.cast_fn, y))
+                    x = apply_tpl(self.cast_fn, x)
+                    y = apply_tpl(self.cast_fn, y)
 
                     pred = self.model(x)
-                    loss = loss_fn(pred, y)
+                    losses = loss_fn(pred, y)
+                    loss = sum(losses) if isinstance(losses, tuple) else losses
+
+                    for name, loss in losses:
+                        loss_numerator[name] += loss.item()
+                        loss_denominator[name] += x.shape[0]
+
+                    loss_numerator["loss"] += loss.item()
+                    loss_denominator["loss"] += x.shape[0]
 
                 # needs to be switched to cumulative
-                if logger is not None and i % log_every == 0:
-                    logger.add_scalar("test_loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
+            if logger is not None:
+                for name, num in loss_numerator.items():
+                    logger.add_scalar("test_" + name, num / loss_denominator[name], step=n_epoch)
+                logger.add_scalar(
+                    "test_loss",
+                    loss_numerator["loss"] / loss_denominator["loss"],
+                    step=n_epoch * len(train_data_loader) + i,
+                )
+
+                sample_idx = np.random.choice(x.shape[0], size=1)
+                detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+
+                sample_x = detch_fn(x)
+                sample_y = detch_fn(y)
+                sample_pred = detch_fn(pred)
+                logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
 
         return self
 
