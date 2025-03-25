@@ -26,7 +26,7 @@ import functools
 import itertools
 from collections.abc import Callable
 from pathlib import Path
-from typing import override
+from typing import Any, override
 
 import gin
 import numpy as np
@@ -36,15 +36,26 @@ from tqdm import tqdm
 
 import neuro_morpho.data.data_loader as data_loader
 import neuro_morpho.model.base as base
+import neuro_morpho.model.loss as loss
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
 )
 
 
+def apply_tpl(fn: Callable, item: Any | tuple[Any, ...]) -> Any | tuple:
+    """Apply a function to a an item or to all of the items in a tuple."""
+    return tuple(map(fn, item)) if isinstance(item, tuple) else fn(item)
+
+
 def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
     """Cast and move tensor to the specified device."""
     return tensor.float().to(device)
+
+
+def detach_and_move(tensor: torch.Tensor, idx: int) -> np.ndarray:
+    """Detach and move tensor to the specified device."""
+    return tensor[idx].detach().cpu().numpy()
 
 
 @gin.configurable
@@ -71,7 +82,9 @@ class UNet(base.BaseModel):
     def predict_dir(self, in_dir, out_dir):
         raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
 
-    @gin.configurable()
+    @gin.configurable(
+        allowlist=["train_data_loader", "test_data_loader", "epochs", "optimizer", "loss_fn", "logger", "log_every"]
+    )
     def fit(
         self,
         training_x_dir: str | Path | None = None,
@@ -82,7 +95,7 @@ class UNet(base.BaseModel):
         test_data_loader: data_loader.DataLoader = None,
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
-        loss_fn: Callable[[tuple[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
+        loss_fn: loss.LOSS_FN = None,
         logger: base.Logger = None,
         log_every: int = 10,
     ) -> base.BaseModel:
@@ -99,12 +112,25 @@ class UNet(base.BaseModel):
                 y = self.cast_fn(y) if not isinstance(y, tuple) else tuple(map(self.cast_fn, y))
 
                 pred = self.model(x)
-                loss = loss_fn(pred, y)
+                losses = loss_fn(pred, y)
+                loss = sum(losses) if isinstance(losses, tuple) else losses
                 loss.backward()
                 optimizer.step()
 
                 if logger is not None and i % log_every == 0:
+                    for name, loss in losses:
+                        logger.add_scalar(name, loss.item(), step=n_epoch * len(train_data_loader) + i)
                     logger.add_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
+
+                    sample_idx = np.random.choice(x.shape[0], size=1)
+                    detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+
+                    sample_x = detch_fn(x)
+                    sample_y = detch_fn(y)
+                    sample_y = detch_fn(y)
+                    sample_pred = detch_fn(pred)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
+
                     # add image logging
 
             for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
