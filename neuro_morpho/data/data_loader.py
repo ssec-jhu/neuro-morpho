@@ -49,7 +49,7 @@ class NeuroMorphoDataset(td.Dataset):
 
         img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)  # [h, w, 1]
         lbl = cv2.imread(str(lbl))  # [h, w, n_lbls]
-        
+
         stack = torch.cat(
             [
                 torch.transpose(torch.atleast_3d(torch.from_numpy(img)), 0, 2).float(),
@@ -77,7 +77,8 @@ class NeuroMorphoDataset(td.Dataset):
 
 @gin.configurable
 def build_dataloader(
-    data_dir: str | Path,
+    x_dir: str | Path,
+    y_dir: str | Path,
     batch_size: int = 1,
     shuffle: bool = True,
     num_workers: int = 0,
@@ -98,8 +99,8 @@ def build_dataloader(
         td.DataLoader: DataLoader for the dataset.
     """
     dataset = NeuroMorphoDataset(
-        x_dir=Path(data_dir) / "imgs",
-        y_dir=Path(data_dir) / "lbls",
+        x_dir=x_dir,
+        y_dir=y_dir,
         aug_transform=aug_transform,
         x_norm=x_norm,
         y_norm=y_norm,

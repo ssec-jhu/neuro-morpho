@@ -22,7 +22,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import functools
 import itertools
+from collections.abc import Callable
 from pathlib import Path
 from typing import override
 
@@ -30,12 +32,19 @@ import gin
 import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
+import neuro_morpho.data.data_loader as data_loader
 import neuro_morpho.model.base as base
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
 )
+
+
+def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
+    """Cast and move tensor to the specified device."""
+    return tensor.float().to(device)
 
 
 @gin.configurable
@@ -55,6 +64,7 @@ class UNet(base.BaseModel):
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
         ).to(device)
+        self.cast_fn = functools.partial(cast_and_move, device=device)
         self.device = device
 
     @override
@@ -64,23 +74,50 @@ class UNet(base.BaseModel):
     @gin.configurable()
     def fit(
         self,
-        training_x_dir: str | Path,
-        training_y_dir: str | Path,
-        testing_x_dir: str | Path,
-        testing_y_dir: str | Path,
-        data_loader: base.DataLoader = None,
+        training_x_dir: str | Path | None = None,
+        training_y_dir: str | Path | None = None,
+        testing_x_dir: str | Path | None = None,
+        testing_y_dir: str | Path | None = None,
+        train_data_loader: data_loader.DataLoader = None,
+        test_data_loader: data_loader.DataLoader = None,
+        epochs: int = 1,
+        optimizer: torch.optim.Optimizer = None,
+        loss_fn: Callable[[tuple[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
+        logger: base.Logger = None,
+        log_every: int = 10,
     ) -> base.BaseModel:
-        if data_loader is None:
-            data_loader = base.DataLoader(
-                training_x_dir,
-                training_y_dir,
-                testing_x_dir,
-                testing_y_dir,
-            )
+        if train_data_loader is None:
+            train_data_loader = data_loader.DataLoader(training_x_dir, training_y_dir)
+        if test_data_loader is None:
+            test_data_loader = data_loader.DataLoader(testing_x_dir, testing_y_dir)
 
-        # Training logic here
-        # ...
-        # self.model.train()
+        for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
+            for i, (x, y) in tqdm(enumerate(train_data_loader), desc="Training", unit="batch", position=1):
+                optimizer.zero_grad()
+
+                x = self.cast_fn(x)
+                y = self.cast_fn(y) if not isinstance(y, tuple) else tuple(map(self.cast_fn, y))
+
+                pred = self.model(x)
+                loss = loss_fn(pred, y)
+                loss.backward()
+                optimizer.step()
+
+                if logger is not None and i % log_every == 0:
+                    logger.add_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
+                    # add image logging
+
+            for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
+                with torch.no_grad():
+                    x = self.cast_fn(x)
+                    y = self.cast_fn(y) if not isinstance(y, tuple) else tuple(map(self.cast_fn, y))
+
+                    pred = self.model(x)
+                    loss = loss_fn(pred, y)
+
+                # needs to be switched to cumulative
+                if logger is not None and i % log_every == 0:
+                    logger.add_scalar("test_loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
 
         return self
 
