@@ -121,8 +121,8 @@ class UNet(base.BaseModel):
 
                 if logger is not None and i % log_every == 0:
                     for name, loss in losses:
-                        logger.add_scalar(name, loss.item(), step=n_epoch * len(train_data_loader) + i)
-                    logger.add_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
+                        logger.log_scalar(name, loss.item(), step=n_epoch * len(train_data_loader) + i)
+                    logger.log_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)
                     detch_fn = functools.partial(detach_and_move, idx=sample_idx)
@@ -132,42 +132,36 @@ class UNet(base.BaseModel):
                     sample_pred = detch_fn(pred)
                     logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
 
-            self.model.eval()
-            loss_numerator = defaultdict(float)
-            loss_denominator = defaultdict(int)
-            for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
-                with torch.no_grad():
-                    x = apply_tpl(self.cast_fn, x)
-                    y = apply_tpl(self.cast_fn, y)
-
-                    pred = self.model(x)
-                    losses = loss_fn(pred, y)
-                    loss = sum(losses) if isinstance(losses, tuple) else losses
-
-                    for name, loss in losses:
-                        loss_numerator[name] += loss.item()
-                        loss_denominator[name] += x.shape[0]
-
-                    loss_numerator["loss"] += loss.item()
-                    loss_denominator["loss"] += x.shape[0]
-
-                # needs to be switched to cumulative
             if logger is not None:
-                for name, num in loss_numerator.items():
-                    logger.add_scalar("test_" + name, num / loss_denominator[name], step=n_epoch)
-                logger.add_scalar(
-                    "test_loss",
-                    loss_numerator["loss"] / loss_denominator["loss"],
-                    step=n_epoch * len(train_data_loader) + i,
-                )
+                self.model.eval()
+                loss_numerator = defaultdict(float)
+                loss_denominator = defaultdict(int)
+                for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
+                    with torch.no_grad():
+                        x = apply_tpl(self.cast_fn, x)
+                        y = apply_tpl(self.cast_fn, y)
 
-                sample_idx = np.random.choice(x.shape[0], size=1)
-                detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+                        pred = self.model(x)
+                        losses = loss_fn(pred, y)
+                        loss = sum(losses) if isinstance(losses, tuple) else losses
 
-                sample_x = detch_fn(x)
-                sample_y = detch_fn(y)
-                sample_pred = detch_fn(pred)
-                logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
+                        for name, loss in losses:
+                            loss_numerator[name] += loss.item()
+                            loss_denominator[name] += x.shape[0]
+
+                        loss_numerator["loss"] += loss.item()
+                        loss_denominator["loss"] += x.shape[0]
+
+                    for name, num in loss_numerator.items():
+                        logger.log_scalar("test_" + name, num / loss_denominator[name], step=n_epoch)
+
+                    sample_idx = np.random.choice(x.shape[0], size=1)
+                    detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+
+                    sample_x = detch_fn(x)
+                    sample_y = detch_fn(y)
+                    sample_pred = detch_fn(pred)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
 
         return self
 
