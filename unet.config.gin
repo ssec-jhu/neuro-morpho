@@ -1,0 +1,59 @@
+import gin.torch
+
+import neuro_morpho.model.unet
+import neuro_morpho.reports.generator
+import neuro_morpho.reports.stats
+import neuro_morpho.cli
+
+torch.optim.Adam.lr = 0.001
+
+pos/class_accuracy.class_idx = 1
+pos/class_accuracy.threshold = 0.5
+neg/class_accuracy.class_idx = 0
+neg/class_accuracy.threshold = 0.5
+
+UNet.n_input_channels = 1
+UNet.n_output_channels = 1
+UNet.encoder_channels = [64, 128, 256, 512, 1024]
+UNet.decoder_channels = [512, 256, 128, 64]
+UNet.device = "cuda"
+
+UNet.fit.train_data_loader = ...
+UNet.fit.test_data_loader = ...
+UNet.fit.epochs = 10
+UNet.fit.optimizer = @torch.optim.Adam
+UNet.fit.loss_fn = ...
+UNet.fit.logger = ...
+UNet.fit.log_every = 10
+
+
+
+generate_report.reports = [
+    @noboxplot_summary,
+]
+
+calculate_n_branches.include_isolated_branches = False
+calculate_n_branches.include_isolated_cycles = False
+calculate_n_tip_points.include_isolated_branches = False
+calculate_total_length.dist_type = "euclidean"
+
+skeleton_analysis.pixel_size = 1
+skeleton_analysis.assume_single_skeleton = True
+skeleton_analysis.stat_fns = [
+    ("Number of Branches", @calculate_n_branches),
+    ("Number of Tips", @calculate_n_tip_points),
+    ("Total Length", @calculate_total_length),
+]
+
+
+
+run.model = @UNet()
+run.training_x_dir = "data/processed/train/imgs"
+run.training_y_dir = "data/processed/train/lbls"
+run.testing_x_dir = "data/processed/test/imgs"
+run.testing_y_dir = "data/processed/test/lbls"
+run.model_save_dir = "models"
+run.model_out_y_dir = "data/output"
+run.model_stats_output_dir = "data/stats/model"
+run.labled_stats_outpur_dir = "data/stats/label"
+run.report_output_dir = "data/report"

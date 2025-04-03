@@ -36,8 +36,7 @@ import torch.nn as nn
 from tqdm import tqdm
 
 import neuro_morpho.data.data_loader as data_loader
-import neuro_morpho.model.base as base
-import neuro_morpho.model.loss as loss
+from neuro_morpho.model import base, loss, metrics
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -84,7 +83,16 @@ class UNet(base.BaseModel):
         raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
 
     @gin.configurable(
-        allowlist=["train_data_loader", "test_data_loader", "epochs", "optimizer", "loss_fn", "logger", "log_every"]
+        allowlist=[
+            "train_data_loader",
+            "test_data_loader",
+            "epochs",
+            "optimizer",
+            "loss_fn",
+            "metric_fns",
+            "logger",
+            "log_every",
+        ]
     )
     def fit(
         self,
@@ -97,14 +105,19 @@ class UNet(base.BaseModel):
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
         loss_fn: loss.LOSS_FN = None,
+        metric_fns: list[metrics.METRIC_FN] | None = None,
         logger: base.Logger = None,
         log_every: int = 10,
+        init_step: int = 0,
     ) -> base.BaseModel:
         if train_data_loader is None:
             train_data_loader = data_loader.DataLoader(training_x_dir, training_y_dir)
         if test_data_loader is None:
             test_data_loader = data_loader.DataLoader(testing_x_dir, testing_y_dir)
 
+        optimizer = optimizer(model=self.model.parameters())
+
+        # TODO: steps needs to be fixed
         for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
             for i, (x, y) in tqdm(enumerate(train_data_loader), desc="Training", unit="batch", position=1):
@@ -120,6 +133,10 @@ class UNet(base.BaseModel):
                 optimizer.step()
 
                 if logger is not None and i % log_every == 0:
+                    fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
+                    metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
+                    for name, value in metrics_values:
+                        logger.log_scalar("train_" + name, value, step=n_epoch * len(train_data_loader) + i)
                     for name, loss in losses:
                         logger.log_scalar(name, loss.item(), step=n_epoch * len(train_data_loader) + i)
                     logger.log_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
@@ -135,7 +152,7 @@ class UNet(base.BaseModel):
             if logger is not None:
                 self.model.eval()
                 loss_numerator = defaultdict(float)
-                loss_denominator = defaultdict(int)
+                loss_denominator = defaultdict(float)
                 for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
                     with torch.no_grad():
                         x = apply_tpl(self.cast_fn, x)
@@ -149,7 +166,13 @@ class UNet(base.BaseModel):
                             loss_numerator[name] += loss.item()
                             loss_denominator[name] += x.shape[0]
 
-                        loss_numerator["loss"] += loss.item()
+                        fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
+                        metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
+                        for name, value in metrics_values:
+                            loss_numerator[name] += value * x.shape[0]  # accumulate total metric value
+                            loss_denominator[name] += x.shape[0]
+
+                        loss_numerator["loss"] += loss.item() * x.shape[0]  # accumulate total loss
                         loss_denominator["loss"] += x.shape[0]
 
                     for name, num in loss_numerator.items():
