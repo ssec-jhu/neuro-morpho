@@ -79,7 +79,7 @@ class UNet(base.BaseModel):
         self.device = device
 
     @override
-    def predict_dir(self, in_dir, out_dir):
+    def predict_dir(self, in_dir: Path | str, out_dir: Path | str):
         raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
 
     @gin.configurable(
