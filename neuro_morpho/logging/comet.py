@@ -9,7 +9,7 @@ import plotly.express as px
 from neuro_morpho.logging import base
 
 
-@gin.configurable(allowlist=["api_key", "project_name", "workspace"])
+@gin.configurable(allowlist=["api_key", "project_name", "workspace", "disabled"])
 class CometLogger(base.Logger):
     """Logger class for logging metrics and images to Comet.ml."""
 
