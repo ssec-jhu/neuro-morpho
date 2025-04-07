@@ -1,6 +1,7 @@
 import argparse
 
 import gin
+import gin.torch
 
 from neuro_morpho import run
 
