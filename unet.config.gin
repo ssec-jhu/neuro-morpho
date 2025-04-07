@@ -84,8 +84,8 @@ UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
 UNet.device = "cuda"
 
-UNet.fit.train_data_loader = @train/build_dataloader  # Use the training data loader
-UNet.fit.test_data_loader = @test/build_dataloader  # Use the testing data loader
+UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
+UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
 UNet.fit.epochs = 10
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss  # Use the combined loss function
