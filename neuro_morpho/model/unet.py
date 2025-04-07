@@ -37,6 +37,7 @@ import torch.utils.data as td
 from tqdm import tqdm
 
 import neuro_morpho.data.data_loader as data_loader
+import neuro_morpho.logging.base as base_logging
 from neuro_morpho.model import base, loss, metrics
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
@@ -107,7 +108,7 @@ class UNet(base.BaseModel):
         optimizer: torch.optim.Optimizer = None,
         loss_fn: loss.LOSS_FN = None,
         metric_fns: list[metrics.METRIC_FN] | None = None,
-        logger: base.Logger = None,
+        logger: base_logging.Logger = None,
         log_every: int = 10,
         init_step: int = 0,
     ) -> base.BaseModel:
