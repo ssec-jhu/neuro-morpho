@@ -2,10 +2,22 @@ import argparse
 
 import gin
 import gin.torch.external_configurables
+from torchvision.transforms import v2
 
 from neuro_morpho import run
 
+
+def register_torch_transforms():
+    """Register torch transforms to gin."""
+
+    gin.external_configurable(v2.Compose, name="Compose")
+    gin.external_configurable(v2.CenterCrop, name="CenterCrop")
+    gin.external_configurable(v2.RandomCrop, name="RandomCrop")
+
+
 if __name__ == "__main__":
+    register_torch_transforms()
+
     parser = argparse.ArgumentParser(
         prog="neuro_morpho",
         description="NeuroMorpho training and reporting CLI.",
