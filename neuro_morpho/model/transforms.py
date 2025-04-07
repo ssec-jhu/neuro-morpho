@@ -23,7 +23,7 @@ class Standardize(torch.nn.Module):
 
         return torch.stack(
             [
-                (img - img.mean(dims=(1, 2, 3))) / img.std(dims=(1, 2, 3)),
+                (img - img.mean(dim=(1, 2, 3), keepdim=False)) / img.std(dim=(1, 2, 3), keepdim=False),
                 lbl,
             ],
             dim=0,
