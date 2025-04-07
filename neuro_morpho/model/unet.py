@@ -60,7 +60,7 @@ def detach_and_move(tensor: torch.Tensor, idx: int) -> np.ndarray:
     return tensor[idx].detach().cpu().numpy()
 
 
-@gin.configurable
+@gin.register
 class UNet(base.BaseModel):
     def __init__(
         self,
@@ -84,7 +84,7 @@ class UNet(base.BaseModel):
     def predict_dir(self, in_dir: Path | str, out_dir: Path | str):
         raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
 
-    @gin.configurable(
+    @gin.register(
         allowlist=[
             "train_data_loader",
             "test_data_loader",
