@@ -2,11 +2,12 @@
 
 from typing import override
 
+import gin
 import torch
-from torchvision.transforms import v2
 
 
-class Normalize(v2.Transform):
+@gin.configurable(allowlist=["lbl_idx"])
+class Standardize(torch.nn.Module):
     def __init__(self, lbl_idx: int):
         """
         Args:
@@ -28,7 +29,7 @@ class Normalize(v2.Transform):
         )
 
 
-class Identity(v2.Transform):
+class Identity(torch.nn.Module):
     def __init__(self):
         super().__init__()
 

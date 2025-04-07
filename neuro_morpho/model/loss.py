@@ -87,8 +87,7 @@ class CombinedLoss(torch.nn.Module):
         self.losses = losses
 
     def forward(self, pred: torch.Tensor, lbl: torch.Tensor) -> list[tuple[str, torch.Tensor]]:
-        """
-        Forward pass to compute the combined loss.
+        """Forward pass to compute the combined loss.
 
         Args:
             pred: The predicted tensor.
