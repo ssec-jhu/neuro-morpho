@@ -33,6 +33,7 @@ import gin
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.utils.data as td
 from tqdm import tqdm
 
 import neuro_morpho.data.data_loader as data_loader
@@ -100,8 +101,8 @@ class UNet(base.BaseModel):
         training_y_dir: str | Path | None = None,
         testing_x_dir: str | Path | None = None,
         testing_y_dir: str | Path | None = None,
-        train_data_loader: data_loader.DataLoader = None,
-        test_data_loader: data_loader.DataLoader = None,
+        train_data_loader: td.DataLoader = None,
+        test_data_loader: td.DataLoader = None,
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
         loss_fn: loss.LOSS_FN = None,
@@ -111,9 +112,9 @@ class UNet(base.BaseModel):
         init_step: int = 0,
     ) -> base.BaseModel:
         if train_data_loader is None:
-            train_data_loader = data_loader.DataLoader(training_x_dir, training_y_dir)
+            train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
         if test_data_loader is None:
-            test_data_loader = data_loader.DataLoader(testing_x_dir, testing_y_dir)
+            test_data_loader = data_loader.build_dataloader(testing_x_dir, testing_y_dir)
 
         optimizer = optimizer(model=self.model.parameters())
 
