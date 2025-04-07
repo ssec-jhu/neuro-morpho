@@ -10,9 +10,9 @@ from neuro_morpho import run
 def register_torch_transforms():
     """Register torch transforms to gin."""
 
-    gin.external_configurable(v2.Compose, name="Compose")
-    gin.external_configurable(v2.CenterCrop, name="CenterCrop")
-    gin.external_configurable(v2.RandomCrop, name="RandomCrop")
+    gin.external_configurable(v2.Compose)
+    gin.external_configurable(v2.CenterCrop)
+    gin.external_configurable(v2.RandomCrop)
 
 
 if __name__ == "__main__":
