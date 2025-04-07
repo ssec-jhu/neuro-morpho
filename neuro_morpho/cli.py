@@ -2,17 +2,17 @@ import argparse
 
 import gin
 import gin.torch.external_configurables
-from torchvision.transforms import v2
+import torchvision
+import torchvision.transforms.v2
 
 from neuro_morpho import run
 
 
 def register_torch_transforms():
     """Register torch transforms to gin."""
-
-    gin.external_configurable(v2.Compose)
-    gin.external_configurable(v2.CenterCrop)
-    gin.external_configurable(v2.RandomCrop)
+    gin.external_configurable(torchvision.transforms.v2.Compose, module="torchvision.transforms.v2")
+    gin.external_configurable(torchvision.transforms.v2.CenterCrop, module="torchvision.transforms.v2")
+    gin.external_configurable(torchvision.transforms.v2.RandomCrop, module="torchvision.transforms.v2")
 
 
 if __name__ == "__main__":
