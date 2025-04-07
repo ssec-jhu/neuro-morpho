@@ -117,7 +117,7 @@ class UNet(base.BaseModel):
         if test_data_loader is None:
             test_data_loader = data_loader.build_dataloader(testing_x_dir, testing_y_dir)
 
-        optimizer = optimizer(model=self.model.parameters())
+        optimizer = optimizer(params=self.model.parameters())
 
         # TODO: steps needs to be fixed
         for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
