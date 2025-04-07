@@ -9,7 +9,8 @@ import torch
 @gin.configurable(allowlist=["lbl_idx"])
 class Standardize(torch.nn.Module):
     def __init__(self, lbl_idx: int):
-        """
+        """Performs standardization on the input image channels.
+
         Args:
             lbl_idx (int): Index of the label channel to normalize against.
         """
@@ -35,8 +36,7 @@ class Identity(torch.nn.Module):
 
     @override
     def forward(self, stack: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass for identity transform. Returns the input tensor unchanged.
+        """Forward pass for identity transform. Returns the input tensor unchanged.
 
         Args:
             stack (torch.Tensor): Input tensor.

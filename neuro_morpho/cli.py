@@ -1,7 +1,7 @@
 import argparse
 
 import gin
-import gin.torch
+import gin.torch.external_configurables
 
 from neuro_morpho import run
 

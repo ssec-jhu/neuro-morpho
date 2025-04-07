@@ -55,7 +55,7 @@ train/build_dataloader.batch_size =2
 train/build_dataloader.num_workers = 4
 train/build_dataloader.shuffle = True
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
-train/build_dataloader.x_norm = @Normalize()
+train/build_dataloader.x_norm = @Standardize()
 train/build_dataloader.y_norm = None
 
 
@@ -65,7 +65,7 @@ test/build_dataloader.batch_size = 2
 test/build_dataloader.num_workers = 4
 test/build_dataloader.shuffle = True
 test/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for testing
-test/build_dataloader.x_norm = @Normalize()
+test/build_dataloader.x_norm = @Standardize()
 test/build_dataloader.y_norm = None
 
 
