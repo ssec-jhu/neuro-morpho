@@ -131,7 +131,7 @@ class UNet(base.BaseModel):
 
                 pred = self.model(x)
                 losses = loss_fn(pred, y)
-                loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, tuple) else losses[1]
+                loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
                 loss.backward()
                 optimizer.step()
 
