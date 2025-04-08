@@ -39,7 +39,7 @@ class DownSample(torch.nn.Module):
             self.transforms = tuple(v2.Resize((int(h * factor), int(w * factor))) for factor in factors)
 
     @override
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor | tuple[torch.Tensor, ...]:
         """Downsample the input tensor.
 
         Args:
@@ -51,7 +51,7 @@ class DownSample(torch.nn.Module):
         if self._single_factor:
             return self.transforms(x)
         else:
-            return [t(x) for t in self.transforms]
+            return tuple(t(x) for t in self.transforms)
 
 
 class Identity(torch.nn.Module):
