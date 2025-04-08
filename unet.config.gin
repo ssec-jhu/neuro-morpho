@@ -44,7 +44,7 @@ test/v2.Compose.transforms = [
     @v2.CenterCrop(), # Center crop for validation/test images
 ]
 
-DownSample.size = %IN_SIZE  # Size of the downsampled images
+DownSample.in_size = %IN_SIZE  # Size of the downsampled images
 DownSample.factors = (2, 4, 8, 16)
 
 
