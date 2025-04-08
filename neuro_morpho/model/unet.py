@@ -127,7 +127,7 @@ class UNet(base.BaseModel):
                 optimizer.zero_grad()
 
                 x = self.cast_fn(x)
-                y = self.cast_fn(y) if not isinstance(y, tuple) else tuple(map(self.cast_fn, y))
+                y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
                 pred = self.model(x)
                 losses = loss_fn(pred, y)
