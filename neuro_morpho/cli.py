@@ -14,6 +14,8 @@ def register_torch_transforms():
     gin.external_configurable(torchvision.transforms.v2.CenterCrop, module="torchvision.transforms.v2")
     gin.external_configurable(torchvision.transforms.v2.RandomCrop, module="torchvision.transforms.v2")
     gin.external_configurable(torchvision.transforms.v2.ToTensor, module="torchvision.transforms.v2")
+    gin.external_configurable(torchvision.transforms.v2.ToImage, module="torchvision.transforms.v2")
+    gin.external_configurable(torchvision.transforms.v2.ToDtype, module="torchvision.transforms.v2")
 
 
 if __name__ == "__main__":
