@@ -10,7 +10,7 @@ import neuro_morpho.data.data_loader
 import neuro_morpho.model.transforms
 
 
-IN_SIZE = (256, 256)  # Size of the input images
+IN_SIZE = (64, 64)  # Size of the input images
 
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
