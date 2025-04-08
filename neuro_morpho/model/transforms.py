@@ -21,7 +21,7 @@ class Standardize(torch.nn.Module):
     def forward(self, stack: torch.Tensor) -> torch.Tensor:
         img, lbl = stack[: self.lbl_idx], stack[self.lbl_idx :]  # [n_lbls, h, w]
 
-        return torch.stack(
+        return torch.concat(
             [
                 (img - img.mean(dim=(1, 2), keepdim=False)) / img.std(dim=(1, 2), keepdim=False),
                 lbl,
