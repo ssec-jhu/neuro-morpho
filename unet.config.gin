@@ -75,8 +75,8 @@ CombinedLoss.weights = (
     0.5,  # weight for focal loss
 )
 CombinedLoss.losses = (
-    @DiceLoss,          # First loss function (Dice)
-    @WeightedFocalLoss, # Second loss function (Focal Loss)
+    @DiceLoss(),          # First loss function (Dice)
+    @WeightedFocalLoss(), # Second loss function (Focal Loss)
 )
 
 UNet.n_input_channels = 1
