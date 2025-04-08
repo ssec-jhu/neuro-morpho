@@ -97,5 +97,5 @@ class CombinedLoss(torch.nn.Module):
             tuple[str, torch.Tensor]: The losses weighted by weights.
         """
 
-        name_vals = [loss(pred, lbl) for loss, (pred, lbl) in self.losses]
+        name_vals = [loss(pred, lbl) for loss in self.losses]
         return [(name, val * weight) for (name, val), weight in zip(name_vals, self.weights)]
