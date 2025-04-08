@@ -89,7 +89,7 @@ UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data 
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
 UNet.fit.epochs = 10
 UNet.fit.optimizer = @torch.optim.Adam
-UNet.fit.loss_fn = @CombinedLoss  # Use the combined loss function
+UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
     @pos/class_accuracy,
     @neg/class_accuracy,
