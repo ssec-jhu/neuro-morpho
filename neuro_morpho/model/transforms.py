@@ -14,14 +14,14 @@ class Standardize(torch.nn.Module):
         return x - x.mean(dim=(1, 2), keepdim=False) / x.std(dim=(1, 2), keepdim=False)
 
 
-@gin.configurable(allowlist=["factors"])
+@gin.configurable(allowlist=["in_size", "factors"])
 class DownSample(torch.nn.Module):
     """Downsamples the input tensor by indicated factors."""
 
     def __init__(
         self,
         in_size: tuple[int, int],
-        factors: int | tuple[float] | list[float],
+        factors: int | float | tuple[float, ...] | list[float],
     ):
         """Downsamples the input tensor by indicated factors.
 
@@ -31,12 +31,12 @@ class DownSample(torch.nn.Module):
         super().__init__()
         h, w = in_size
 
-        if isinstance(factors, int | float):
+        self._single_factor = isinstance(factors, int | float)
+
+        if self._single_factor:
             self.transforms = v2.Resize((int(h * factors), int(w * factors)))
-        if isinstance(factors, tuple | list):
-            self.transforms = tuple(v2.Resize((int(h * factor), int(w * factor))) for factor in factors)
         else:
-            raise TypeError(f"Invalid type for factors: {type(factors)}")
+            self.transforms = tuple(v2.Resize((int(h * factor), int(w * factor))) for factor in factors)
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -48,8 +48,10 @@ class DownSample(torch.nn.Module):
         Returns:
             torch.Tensor: Downsampled tensor.
         """
-
-        return x
+        if self._single_factor:
+            return self.transforms(x)
+        else:
+            return [t(x) for t in self.transforms]
 
 
 class Identity(torch.nn.Module):
