@@ -119,10 +119,11 @@ class UNet(base.BaseModel):
 
         optimizer = optimizer(params=self.model.parameters())
 
+        step = init_step
         # TODO: steps needs to be fixed
         for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
-            for i, (x, y) in tqdm(enumerate(train_data_loader), desc="Training", unit="batch", position=1):
+            for x, y in tqdm(train_data_loader, desc="Training", unit="batch", position=1):
                 optimizer.zero_grad()
 
                 x = self.cast_fn(x)
@@ -134,14 +135,14 @@ class UNet(base.BaseModel):
                 loss.backward()
                 optimizer.step()
 
-                if logger is not None and i % log_every == 0:
+                if logger is not None and step % log_every == 0:
                     fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                     metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
                     for name, value in metrics_values:
-                        logger.log_scalar("train_" + name, value, step=n_epoch * len(train_data_loader) + i)
+                        logger.log_scalar("train_" + name, value, step=step)
                     for name, loss in losses:
-                        logger.log_scalar(name, loss.item(), step=n_epoch * len(train_data_loader) + i)
-                    logger.log_scalar("loss", loss.item(), step=n_epoch * len(train_data_loader) + i)
+                        logger.log_scalar(name, loss.item(), step=step)
+                    logger.log_scalar("loss", loss.item(), step=step)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)
                     detch_fn = functools.partial(detach_and_move, idx=sample_idx)
@@ -149,13 +150,13 @@ class UNet(base.BaseModel):
                     sample_x = detch_fn(x)
                     sample_y = detch_fn(y)
                     sample_pred = detch_fn(pred)
-                    logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, step=step)
 
             if logger is not None:
                 self.model.eval()
                 loss_numerator = defaultdict(float)
                 loss_denominator = defaultdict(float)
-                for i, (x, y) in tqdm(enumerate(test_data_loader), desc="Testing", unit="batch", position=2):
+                for x, y in tqdm(test_data_loader, desc="Testing", unit="batch", position=2):
                     with torch.no_grad():
                         x = apply_tpl(self.cast_fn, x)
                         y = apply_tpl(self.cast_fn, y)
@@ -177,16 +178,18 @@ class UNet(base.BaseModel):
                         loss_numerator["loss"] += loss.item() * x.shape[0]  # accumulate total loss
                         loss_denominator["loss"] += x.shape[0]
 
-                    for name, num in loss_numerator.items():
-                        logger.log_scalar("test_" + name, num / loss_denominator[name], step=n_epoch)
+                for name, num in loss_numerator.items():
+                    logger.log_scalar("test_" + name, num / loss_denominator[name], step=step)
 
-                    sample_idx = np.random.choice(x.shape[0], size=1)
-                    detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+                sample_idx = np.random.choice(x.shape[0], size=1)
+                detch_fn = functools.partial(detach_and_move, idx=sample_idx)
 
-                    sample_x = detch_fn(x)
-                    sample_y = detch_fn(y)
-                    sample_pred = detch_fn(pred)
-                    logger.log_triplet(sample_x, sample_y, sample_pred, step=n_epoch * len(train_data_loader) + i)
+                sample_x = detch_fn(x)
+                sample_y = detch_fn(y)
+                sample_pred = detch_fn(pred)
+                logger.log_triplet(sample_x, sample_y, sample_pred, step=step)
+
+            step += 1
 
         return self
 
