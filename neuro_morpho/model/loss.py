@@ -58,13 +58,17 @@ class WeightedFocalLoss(torch.nn.Module):
 
 @gin.configurable(allowlist=["smooth"])
 class DiceLoss(torch.nn.Module):
-    """Dice Loss"""
+    """Dice Loss that can handle multiscale outputs."""
 
     def __init__(self, smooth=1.0):
         super(DiceLoss, self).__init__()
         self.smooth = smooth
 
-    def forward(self, preds: torch.Tensor, targets: torch.Tensor) -> tuple[str, torch.Tensor]:
+    def forward(
+        self,
+        preds: torch.Tensor | list[torch.Tensor],
+        targets: torch.Tensor | list[torch.Tensor],
+    ) -> tuple[str, torch.Tensor]:
         numerator = 2 * torch.sum(preds * targets) + self.smooth
         denominator = torch.sum(preds**2) + torch.sum(targets**2) + self.smooth
         soft_dice_loss = 1 - numerator / denominator

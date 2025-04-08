@@ -4,30 +4,52 @@ from typing import override
 
 import gin
 import torch
+from torchvision.transforms import v2
 
 
-@gin.configurable(allowlist=["lbl_idx"])
+@gin.register
 class Standardize(torch.nn.Module):
-    def __init__(self, lbl_idx: int):
-        """Performs standardization on the input image channels.
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x - x.mean(dim=(1, 2), keepdim=False) / x.std(dim=(1, 2), keepdim=False)
+
+
+@gin.configurable(allowlist=["factors"])
+class DownSample(torch.nn.Module):
+    """Downsamples the input tensor by indicated factors."""
+
+    def __init__(
+        self,
+        in_size: tuple[int, int],
+        factors: int | tuple[float] | list[float],
+    ):
+        """Downsamples the input tensor by indicated factors.
 
         Args:
-            lbl_idx (int): Index of the label channel to normalize against.
+            factors (int | list[int]): Downsampling factors for each  w/h dimensions.
         """
         super().__init__()
-        self.lbl_idx = lbl_idx
+        h, w = in_size
+
+        if isinstance(factors, int | float):
+            self.transforms = v2.Resize((int(h * factors), int(w * factors)))
+        if isinstance(factors, tuple | list):
+            self.transforms = tuple(v2.Resize((int(h * factor), int(w * factor))) for factor in factors)
+        else:
+            raise TypeError(f"Invalid type for factors: {type(factors)}")
 
     @override
-    def forward(self, stack: torch.Tensor) -> torch.Tensor:
-        img, lbl = stack[: self.lbl_idx], stack[self.lbl_idx :]  # [n_lbls, h, w]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Downsample the input tensor.
 
-        return torch.concat(
-            [
-                (img - img.mean(dim=(1, 2), keepdim=False)) / img.std(dim=(1, 2), keepdim=False),
-                lbl,
-            ],
-            dim=0,
-        )
+        Args:
+            stack (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Downsampled tensor.
+        """
+
+        return x
 
 
 class Identity(torch.nn.Module):
