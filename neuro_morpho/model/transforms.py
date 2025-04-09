@@ -18,7 +18,7 @@ class Standardize(torch.nn.Module):
 class Norm2One(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x / x.max(dim=1, keepdim=True).values.max(dim=2, keepdim=True).values.shape
+        return x / x.max(dim=1, keepdim=True).values.max(dim=2, keepdim=True).values
 
 
 
