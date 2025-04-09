@@ -45,7 +45,7 @@ test/v2.Compose.transforms = [
 ]
 
 DownSample.in_size = %IN_SIZE  # Size of the downsampled images
-DownSample.factors = (2, 4, 8, 16)
+DownSample.factors = (0.50, 0.25, 0.125, 0.0625)
 
 
 train/build_dataloader.x_dir = "data/processed/train/imgs"
