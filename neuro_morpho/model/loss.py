@@ -44,7 +44,7 @@ class WeightedFocalLoss(torch.nn.Module):
 
     def __init__(self, alpha=0.25, gamma=2, coefs: list[float] = None):
         super(WeightedFocalLoss, self).__init__()
-        self.alpha = torch.tensor([alpha, 1 - alpha]).cuda()
+        self.alpha = torch.tensor(alpha).cuda()
         self.gamma = gamma
         self.coefs = coefs
 
