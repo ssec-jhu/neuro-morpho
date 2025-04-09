@@ -21,7 +21,6 @@ class Norm2One(torch.nn.Module):
         return x / x.max(dim=1, keepdim=True).values.max(dim=2, keepdim=True).values
 
 
-
 @gin.configurable(allowlist=["in_size", "factors"])
 class DownSample(torch.nn.Module):
     """Downsamples the input tensor by indicated factors."""
@@ -41,10 +40,13 @@ class DownSample(torch.nn.Module):
 
         self._single_factor = isinstance(factors, int | float)
 
+        def down_f(factor: tuple[float, float]) -> v2.Transform:
+            return v2.Resize((int(h * factor), int(w * factor)), interpolation=v2.InterpolationMode.NEAREST)
+
         if self._single_factor:
-            self.transforms = v2.Resize((int(h * factors), int(w * factors)))
+            self.transforms = down_f(factors)
         else:
-            self.transforms = tuple(v2.Resize((int(h * factor), int(w * factor))) for factor in factors)
+            self.transforms = tuple(down_f(factor) for factor in factors)
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor | tuple[torch.Tensor, ...]:
