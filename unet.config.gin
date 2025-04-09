@@ -37,10 +37,19 @@ v2.CenterCrop.size = %IN_SIZE  # Size of the center crop for validation/test ima
 DownSample.in_size = %IN_SIZE  # Size of the downsampled images
 DownSample.factors = (1.0, 0.50, 0.25, 0.125)
 
+dice/WeightedMap.loss_fn = @DiceLoss()
+dice/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
+weighted_focal_loss/WeightedMap.loss_fn = @WeightedFocalLoss()
+weighted_focal_loss/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
+
+
+
+
 train/v2.Compose.transforms = [
     @v2.ToTensor(),  # Convert to tensor
     @v2.RandomCrop(), # Random crop for training images
 ]
+
 
 test/v2.Compose.transforms = [
     @v2.ToTensor(),  # Convert to tensor
@@ -51,6 +60,8 @@ ynorm/v2.Compose.transforms = [
     @Norm2One(),
     @DownSample(),
 ]
+
+
 
 
 train/build_dataloader.x_dir = "data/processed/train/imgs"
@@ -79,8 +90,8 @@ CombinedLoss.weights = (
     0.5,  # weight for focal loss
 )
 CombinedLoss.losses = (
-    @DiceLoss(),          # First loss function (Dice)
-    @WeightedFocalLoss(), # Second loss function (Focal Loss)
+    @dice/WeightedMap(),          # First loss function (Dice)
+    @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
 UNet.n_input_channels = 1

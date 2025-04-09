@@ -38,14 +38,15 @@ TARGET = torch.Tensor
 LOSS_FN = Callable[[PRED, TARGET], tuple[NAME_LOSS, ...]]
 
 
-@gin.configurable(allowlist=["alpha", "gamma"])
+@gin.configurable(allowlist=["alpha", "gamma", "coefs"])
 class WeightedFocalLoss(torch.nn.Module):
     "Non weighted version of Focal Loss"
 
-    def __init__(self, alpha=0.25, gamma=2):
+    def __init__(self, alpha=0.25, gamma=2, coefs: list[float] = None):
         super(WeightedFocalLoss, self).__init__()
         self.alpha = torch.tensor([alpha, 1 - alpha]).cuda()
         self.gamma = gamma
+        self.coefs = coefs
 
     def forward(self, inputs, targets) -> tuple[str, torch.Tensor]:
         BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
@@ -74,6 +75,23 @@ class DiceLoss(torch.nn.Module):
         soft_dice_loss = 1 - numerator / denominator
 
         return "dice_loss", soft_dice_loss
+
+
+@gin.configurable(allowlist=["loss_fn", "coefs"])
+class WeightedMap(torch.nn.Module):
+    """Weighted Map Loss."""
+
+    def __init__(self, loss_fn: torch.nn.Module, coefs: list[float]):
+        super(WeightedMap, self).__init__()
+        self.coefs = coefs
+        self.loss_fn = loss_fn
+
+    def forward(self, pred: list[torch.Tensor], lbl: list[torch.Tensor]) -> tuple[str, torch.Tensor]:
+        total_loss = 0
+        for i in range(len(pred)):
+            name, loss = self.loss_fn(pred[i], lbl[i])
+            total_loss += loss
+        return name, total_loss
 
 
 @gin.configurable(allowlist=["weights", "losses"])
