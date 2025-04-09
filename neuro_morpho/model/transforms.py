@@ -18,7 +18,9 @@ class Standardize(torch.nn.Module):
 class Norm2One(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x / x.max(dim=(1, 2), keepdim=False)
+        print(x.shape)
+        return x / x.max(1, keepdim=False).max(dim=1, keepdim=False)
+
 
 
 @gin.configurable(allowlist=["in_size", "factors"])
