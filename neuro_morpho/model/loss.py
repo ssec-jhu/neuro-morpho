@@ -89,8 +89,8 @@ class WeightedMap(torch.nn.Module):
     def forward(self, pred: list[torch.Tensor], lbl: list[torch.Tensor]) -> tuple[str, torch.Tensor]:
         total_loss = 0
         for i in range(len(pred)):
-            name, loss = self.loss_fn(pred[i], lbl[i]) * self.coefs[i]
-            total_loss += loss
+            name, loss = self.loss_fn(pred[i], lbl[i])
+            total_loss += loss * self.coefs[i]
         return name, total_loss
 
 
