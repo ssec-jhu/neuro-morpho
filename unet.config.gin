@@ -34,6 +34,9 @@ DiceLoss.smooth = 1
 v2.RandomCrop.size = %IN_SIZE  # Size of the random crop for training images
 v2.CenterCrop.size = %IN_SIZE  # Size of the center crop for validation/test images
 
+DownSample.in_size = %IN_SIZE  # Size of the downsampled images
+DownSample.factors = (1.0, 0.50, 0.25, 0.125)
+
 train/v2.Compose.transforms = [
     @v2.ToTensor(),  # Convert to tensor
     @v2.RandomCrop(), # Random crop for training images
@@ -44,8 +47,10 @@ test/v2.Compose.transforms = [
     @v2.CenterCrop(), # Center crop for validation/test images
 ]
 
-DownSample.in_size = %IN_SIZE  # Size of the downsampled images
-DownSample.factors = (1.0, 0.50, 0.25, 0.125)
+ynorm/v2.Compose.transforms = [
+    @Norm2One()
+    @DownSample(),
+]
 
 
 train/build_dataloader.x_dir = "data/processed/train/imgs"
@@ -55,7 +60,7 @@ train/build_dataloader.num_workers = 4
 train/build_dataloader.shuffle = True
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
 train/build_dataloader.x_norm = @Standardize()
-train/build_dataloader.y_norm = @DownSample()
+train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
 
 
 test/build_dataloader.x_dir = "data/processed/test/imgs"
@@ -65,7 +70,8 @@ test/build_dataloader.num_workers = 4
 test/build_dataloader.shuffle = True
 test/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for testing
 test/build_dataloader.x_norm = @Standardize()
-test/build_dataloader.y_norm = @DownSample()
+test/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+
 
 
 CombinedLoss.weights = (

@@ -48,7 +48,7 @@ class NeuroMorphoDataset(td.Dataset):
         lbl = self.lbl_files[index]
 
         img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)  # [h, w, 1]
-        lbl = cv2.imread(str(lbl))  # [h, w, n_lbls]
+        lbl = cv2.imread(str(lbl), cv2.IMREAD_GRAYSCALE)  # [h, w, n_lbls]
 
         stack = torch.cat(
             [

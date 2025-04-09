@@ -14,6 +14,13 @@ class Standardize(torch.nn.Module):
         return x - x.mean(dim=(1, 2), keepdim=False) / x.std(dim=(1, 2), keepdim=False)
 
 
+@gin.register
+class Norm2One(torch.nn.Module):
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x / x.max(dim=(1, 2), keepdim=False)
+
+
 @gin.configurable(allowlist=["in_size", "factors"])
 class DownSample(torch.nn.Module):
     """Downsamples the input tensor by indicated factors."""
