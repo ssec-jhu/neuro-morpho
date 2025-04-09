@@ -53,7 +53,7 @@ class NeuroMorphoDataset(td.Dataset):
         stack = torch.cat(
             [
                 torch.transpose(torch.atleast_3d(torch.from_numpy(img)), 0, 2).float(),
-                torch.transpose(torch.from_numpy(lbl), 0, 2).float(),
+                torch.transpose(torch.atleast_3d(torch.from_numpy(lbl)), 0, 2).float(),
             ],
             dim=0,
         )  # [n_lbls+1, h, w]
