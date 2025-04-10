@@ -151,7 +151,7 @@ class UNet(base.BaseModel):
                         logger.log_scalar("train_" + name, loss.item(), step=step)
                     logger.log_scalar("train_loss", loss.item(), step=step)
 
-                    sample_idx = np.random.choice(x.shape[0], size=1)
+                    sample_idx = np.random.choice(x.shape[0], size=1)[0]
                     sample_x = x[sample_idx, ...]
                     sample_y = y[sample_idx, ...]
                     sample_pred = pred[sample_idx, ...]
@@ -187,7 +187,7 @@ class UNet(base.BaseModel):
                 for name, num in loss_numerator.items():
                     logger.log_scalar("test_" + name, num / loss_denominator[name], step=step)
 
-                sample_idx = np.random.choice(x.shape[0], size=1)
+                sample_idx = np.random.choice(x.shape[0], size=1)[0]
                 detch_fn = functools.partial(detach_and_move, idx=sample_idx)
 
                 sample_x = detch_fn(x)
