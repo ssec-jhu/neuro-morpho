@@ -65,7 +65,8 @@ class CometLogger(base.Logger):
         ctx = self.experiment.train if train else self.experiment.test
         with ctx():
             self.experiment.log_figure(
-                image=fig.to_html(),
-                name=f"{name}.html",
+                # figure=fig.to_html(),
+                figure=fig,
+                figure_name=f"{name}.html",
                 step=step,
             )
