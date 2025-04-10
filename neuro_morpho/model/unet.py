@@ -145,7 +145,7 @@ class UNet(base.BaseModel):
                     fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                     metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
                     for name, value in metrics_values:
-                        logger.log_scalar("train_" + name, value.cpu().numpy(), step=step)
+                        logger.log_scalar("train_" + name, value, step=step)
                     for name, loss in losses:
                         logger.log_scalar("train_" + name, loss.item().cpu().numpy(), step=step)
                     logger.log_scalar("train_loss", loss.item().cpu().numpy(), step=step)
