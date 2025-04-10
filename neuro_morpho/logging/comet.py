@@ -37,11 +37,15 @@ class CometLogger(base.Logger):
         )
 
     @override
-    def log_scalar(self, name: str, value: float, step: int) -> None:
-        self.experiment.log_metric(name, value, step=step)
+    def log_scalar(self, name: str, value: float, step: int, train: bool) -> None:
+        ctx = self.experiment.train if train else self.experiment.test
+        with ctx():
+            self.experiment.log_metric(name, value, step=step)
 
     @override
-    def log_triplet(self, in_img: np.ndarray, lbl_img: np.ndarray, out_img: np.ndarray, name: str, step: int) -> None:
+    def log_triplet(
+        self, in_img: np.ndarray, lbl_img: np.ndarray, out_img: np.ndarray, name: str, step: int, train: bool
+    ) -> None:
         img_seq = [
             in_img / in_img.max(),
             out_img / out_img.max(),
@@ -58,8 +62,10 @@ class CometLogger(base.Logger):
         for i, title in enumerate(titles):
             fig.layout.annotations[i].update(text=title)
 
-        self.experiment.log_figure(
-            figure=fig,
-            figure_name=f"{name}.html",
-            step=step,
-        )
+        ctx = self.experiment.train if train else self.experiment.test
+        with ctx():
+            self.experiment.log_figure(
+                image=fig.to_html(),
+                name=f"{name}.html",
+                step=step,
+            )

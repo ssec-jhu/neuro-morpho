@@ -15,7 +15,7 @@ IN_SIZE = (64, 64)  # Size of the input images
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.disabled = True
+CometLogger.disabled = False
 
 
 
