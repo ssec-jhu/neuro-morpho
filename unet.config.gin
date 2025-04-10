@@ -47,7 +47,7 @@ weighted_focal_loss/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
 
 train/v2.Compose.transforms = [
     @v2.ToTensor(),  # Convert to tensor
-    @v2.RandomCrop(), # Random crop for training images
+    @v2.CenterCrop(), # Random crop for training images
 ]
 
 
