@@ -141,8 +141,8 @@ class UNet(base.BaseModel):
                     for name, value in metrics_values:
                         logger.log_scalar("train_" + name, value, step=step)
                     for name, loss in losses:
-                        logger.log_scalar(name, loss.item(), step=step)
-                    logger.log_scalar("loss", loss.item(), step=step)
+                        logger.log_scalar("train_" + name, loss.item(), step=step)
+                    logger.log_scalar("train_loss", loss.item(), step=step)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)
                     detch_fn = functools.partial(detach_and_move, idx=sample_idx)
