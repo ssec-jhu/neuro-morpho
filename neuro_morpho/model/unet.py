@@ -156,7 +156,7 @@ class UNet(base.BaseModel):
                     sample_y = y[sample_idx, ...].squeeze()
                     sample_pred = pred[sample_idx, ...].squeeze()
 
-                    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, "train_triplet", step=step)
 
             if logger is not None:
                 self.model.eval()
@@ -192,12 +192,10 @@ class UNet(base.BaseModel):
                     logger.log_scalar("test_" + name, num / loss_denominator[name], step=step)
 
                 sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                detch_fn = functools.partial(detach_and_move, idx=sample_idx)
-
-                sample_x = detch_fn(x)
-                sample_y = detch_fn(y)
-                sample_pred = detch_fn(pred)
-                logger.log_triplet(sample_x, sample_y, sample_pred, step=step)
+                sample_x = x[sample_idx, ...].squeeze()
+                sample_y = y[sample_idx, ...].squeeze()
+                sample_pred = pred[sample_idx, ...].squeeze()
+                logger.log_triplet(sample_x, sample_y, sample_pred, "test_triplet", step=step)
 
             step += 1
 
