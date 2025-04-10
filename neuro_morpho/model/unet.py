@@ -157,6 +157,7 @@ class UNet(base.BaseModel):
                     sample_pred = pred[sample_idx, ...].squeeze()
 
                     logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
+                step += 1
 
             if logger is not None:
                 self.model.eval()
@@ -196,8 +197,6 @@ class UNet(base.BaseModel):
                 sample_y = y[sample_idx, ...].squeeze()
                 sample_pred = pred[sample_idx, ...].squeeze()
                 logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
-
-            step += 1
 
         return self
 
