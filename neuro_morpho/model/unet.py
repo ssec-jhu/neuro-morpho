@@ -175,6 +175,10 @@ class UNet(base.BaseModel):
                             loss_numerator[name] += loss.item()
                             loss_denominator[name] += x.shape[0]
 
+                        x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
+                        pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                        y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+
                         fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                         metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
                         for name, value in metrics_values:
