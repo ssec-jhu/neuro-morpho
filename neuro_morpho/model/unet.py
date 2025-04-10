@@ -146,17 +146,17 @@ class UNet(base.BaseModel):
                     fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                     metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
                     for name, value in metrics_values:
-                        logger.log_scalar("train_" + name, value, step=step)
+                        logger.log_scalar(name, value, step=step, train=True)
                     for name, loss in losses:
-                        logger.log_scalar("train_" + name, loss.item(), step=step)
-                    logger.log_scalar("train_loss", loss.item(), step=step)
+                        logger.log_scalar(name, loss.item(), step=step, train=True)
+                    logger.log_scalar("loss", loss.item(), step=step, train=True)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)[0]
                     sample_x = x[sample_idx, ...].squeeze()
                     sample_y = y[sample_idx, ...].squeeze()
                     sample_pred = pred[sample_idx, ...].squeeze()
 
-                    logger.log_triplet(sample_x, sample_y, sample_pred, "train_triplet", step=step)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
 
             if logger is not None:
                 self.model.eval()
@@ -189,13 +189,13 @@ class UNet(base.BaseModel):
                         loss_denominator["loss"] += x.shape[0]
 
                 for name, num in loss_numerator.items():
-                    logger.log_scalar("test_" + name, num / loss_denominator[name], step=step)
+                    logger.log_scalar(name, num / loss_denominator[name], step=step, train=False)
 
                 sample_idx = np.random.choice(x.shape[0], size=1)[0]
                 sample_x = x[sample_idx, ...].squeeze()
                 sample_y = y[sample_idx, ...].squeeze()
                 sample_pred = pred[sample_idx, ...].squeeze()
-                logger.log_triplet(sample_x, sample_y, sample_pred, "test_triplet", step=step)
+                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
 
             step += 1
 
