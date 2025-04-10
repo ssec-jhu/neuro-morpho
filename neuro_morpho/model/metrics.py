@@ -1,10 +1,10 @@
 from typing import Callable
 
 import gin
-import torch
+import numpy as np
 
-PRED = torch.Tensor
-LBL = torch.Tensor
+PRED = np.ndarray
+LBL = np.ndarray
 METRIC_FN = Callable[[PRED, LBL], tuple[str, float]]
 
 
@@ -18,8 +18,8 @@ def accuracy(pred: PRED, lbl: LBL, threshold: float) -> tuple[str, float]:
     Returns:
         float: The accuracy as a percentage.
     """
-    pred_binary = (pred >= threshold).int()
-    correct_predictions = torch.sum(pred_binary == lbl)
+    pred_binary = pred >= threshold
+    correct_predictions = np.sum(pred_binary == lbl)
     total_predictions = len(lbl)
     accuracy_value = correct_predictions / total_predictions
     return "accuracy", accuracy_value  # Return as percentage
