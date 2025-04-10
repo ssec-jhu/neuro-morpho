@@ -165,7 +165,7 @@ class UNet(base.BaseModel):
                 for x, y in tqdm(test_data_loader, desc="Testing", unit="batch", position=2):
                     with torch.no_grad():
                         x = apply_tpl(self.cast_fn, x)
-                        y = apply_tpl(self.cast_fn, y)
+                        y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
                         pred = self.model(x)
                         losses = loss_fn(pred, y)
