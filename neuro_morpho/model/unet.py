@@ -156,7 +156,7 @@ class UNet(base.BaseModel):
                     sample_y = y[sample_idx, ...]
                     sample_pred = pred[sample_idx, ...]
 
-                    logger.log_triplet(sample_x, sample_y, sample_pred, step=step)
+                    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step)
 
             if logger is not None:
                 self.model.eval()
