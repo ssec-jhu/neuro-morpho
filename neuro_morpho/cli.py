@@ -37,4 +37,4 @@ if __name__ == "__main__":
     config = args.config or "config.gin"
     print(f"Loading gin config from {config}")
     gin.parse_config_file(config)
-    run.run()
+    # run.run()
