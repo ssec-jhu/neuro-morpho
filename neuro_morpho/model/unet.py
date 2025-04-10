@@ -152,9 +152,9 @@ class UNet(base.BaseModel):
                     logger.log_scalar("train_loss", loss.item(), step=step)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                    sample_x = x[sample_idx, ...]
-                    sample_y = y[sample_idx, ...]
-                    sample_pred = pred[sample_idx, ...]
+                    sample_x = x[sample_idx, ...].squeeze()
+                    sample_y = y[sample_idx, ...].squeeze()
+                    sample_pred = pred[sample_idx, ...].squeeze()
 
                     logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step)
 
