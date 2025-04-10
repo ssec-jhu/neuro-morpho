@@ -55,7 +55,7 @@ def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
     return tensor.float().to(device)
 
 
-def detach_and_move(tensor: torch.Tensor, idx: int|None = None) -> np.ndarray:
+def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
     """Detach and move tensor to the specified device."""
     if idx is None:
         return tensor.detach().cpu().numpy()
@@ -139,8 +139,8 @@ class UNet(base.BaseModel):
                 optimizer.step()
 
                 if logger is not None and step % log_every == 0:
-                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple) else None)
-                    y = detach_and_move(y, idx=0 if isinstance(y, tuple) else None)
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
 
                     fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                     metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
