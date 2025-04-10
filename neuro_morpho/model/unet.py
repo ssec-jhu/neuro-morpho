@@ -139,6 +139,7 @@ class UNet(base.BaseModel):
                 optimizer.step()
 
                 if logger is not None and step % log_every == 0:
+                    x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
 
@@ -151,11 +152,10 @@ class UNet(base.BaseModel):
                     logger.log_scalar("train_loss", loss.item(), step=step)
 
                     sample_idx = np.random.choice(x.shape[0], size=1)
-                    detch_fn = functools.partial(detach_and_move, idx=sample_idx)
+                    sample_x = x[sample_idx, ...]
+                    sample_y = y[sample_idx, ...]
+                    sample_pred = pred[sample_idx, ...]
 
-                    sample_x = detch_fn(x)
-                    sample_y = detch_fn(y)
-                    sample_pred = detch_fn(pred)
                     logger.log_triplet(sample_x, sample_y, sample_pred, step=step)
 
             if logger is not None:
