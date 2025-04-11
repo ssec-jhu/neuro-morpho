@@ -82,6 +82,7 @@ class UNet(base.BaseModel):
         ).to(device)
         self.cast_fn = functools.partial(cast_and_move, device=device)
         self.device = device
+        self.exp_id: str = None
 
     @override
     def predict_dir(self, in_dir: Path | str, out_dir: Path | str):
@@ -206,7 +207,9 @@ class UNet(base.BaseModel):
 
     @override
     def save(self, path: str | Path) -> None:
-        torch.save(self.model.state_dict(), path)
+        save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")
+        with save_path.open("w") as f:
+            torch.save(self.model.state_dict(), f)
 
     @override
     def load(self, path: str | Path) -> None:
