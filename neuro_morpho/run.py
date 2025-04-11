@@ -18,6 +18,7 @@ def run(
     model_stats_output_dir: str | Path,
     labled_stats_outpur_dir: str | Path,
     report_output_dir: str | Path,
+    logger: base.Logger = None,
 ):
     """Run the model on the data and save the results.
 
@@ -37,12 +38,23 @@ def run(
     labled_stats_outpur_dir = Path(labled_stats_outpur_dir)
     report_output_dir = Path(report_output_dir)
 
-    model = model.fit(
-        training_x_dir,
-        training_y_dir,
-        testing_x_dir,
-        testing_y_dir,
-    )
+    if logger is not None:
+        model.exp_id = logger.experiment.get_key()
+        model = model.fit(
+            training_x_dir,
+            training_y_dir,
+            testing_x_dir,
+            testing_y_dir,
+            logger=logger,
+        )
+    else:
+        model = model.fit(
+            training_x_dir,
+            training_y_dir,
+            testing_x_dir,
+            testing_y_dir,
+        )
+
     model.save(model_save_dir)
 
     model.predict_dir(testing_x_dir, model_out_y_dir)
