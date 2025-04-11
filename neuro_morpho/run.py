@@ -2,6 +2,7 @@ from pathlib import Path
 
 import gin
 
+import neuro_morpho.logging.base as log
 import neuro_morpho.model.base as base
 from neuro_morpho.reports import generator
 
@@ -18,7 +19,7 @@ def run(
     model_stats_output_dir: str | Path,
     labled_stats_outpur_dir: str | Path,
     report_output_dir: str | Path,
-    logger: base.Logger = None,
+    logger: log.Logger = None,
 ):
     """Run the model on the data and save the results.
 

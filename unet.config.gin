@@ -109,7 +109,6 @@ UNet.fit.metric_fns = [
     @pos/class_accuracy,
     @neg/class_accuracy,
 ]
-UNet.fit.logger = @CometLogger()  # Use CometLogger for logging metrics
 UNet.fit.log_every = 10
 
 
@@ -143,3 +142,4 @@ run.model_out_y_dir = "data/output"
 run.model_stats_output_dir = "data/stats/model"
 run.labled_stats_outpur_dir = "data/stats/label"
 run.report_output_dir = "data/report"
+run.logger = @CometLogger()
