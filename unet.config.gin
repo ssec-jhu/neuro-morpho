@@ -94,6 +94,8 @@ CombinedLoss.losses = (
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
+ChannelAttention.ratio = 16
+
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
 # UNet.encoder_channels = [2, 4, 8, 16, 32]

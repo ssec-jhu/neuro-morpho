@@ -358,6 +358,7 @@ class AttentionGroup(nn.Module):
         return x + att
 
 
+@gin.configurable(allowlist=["ratio"])
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio=16):
         super(ChannelAttention, self).__init__()
@@ -365,9 +366,9 @@ class ChannelAttention(nn.Module):
         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
         self.fc = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // 16, 1, bias=False),
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
             nn.ReLU(),
-            nn.Conv2d(in_planes // 16, in_planes, 1, bias=False),
+            nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False),
         )
         self.sigmoid = nn.Sigmoid()
 
@@ -402,24 +403,30 @@ class UnetAttention(nn.Module):
     def forward(self, x):
         out1, out2, out3, out4, x = self.encoder(x.float())
         x, aux_128, aux_64, aux_32 = self.decoder(out1, out2, out3, out4, x)
-
+        print("UNetAttention===========")
+        print(x.shape, aux_128.shape, aux_64.shape, aux_32.shape)
+        print("================================")
+        print("Squeeze")
+        print(x.squeeze().shape, aux_128.squeeze().shape, aux_64.squeeze().shape, aux_32.squeeze().shape)
+        print("================================")
         return x.squeeze(), aux_128.squeeze(), aux_64.squeeze(), aux_32.squeeze()
 
 
 if __name__ == "__main__":
-    model = Encoder(in_channels=1, channels=[64, 128, 256, 512, 1024])
-    x = torch.randn(1, 1, 512, 512)
+    batch_size, in_channels, out_channels = 2, 1, 1
+    model = Encoder(in_channels=in_channels, channels=[64, 128, 256, 512, 1024])
+    x = torch.randn(batch_size, in_channels, 512, 512)
     outs = model(x)
     print([y.shape for y in outs])
     model2 = Decoder(
         in_channels=outs[-1].shape[1],
-        out_channels=1,
+        out_channels=out_channels,
         channels=[512, 256, 128, 64],
     )
     outs2 = model2(outs)
     print([y.shape for y in outs2])
 
-    model = UNetModule()
-    x = torch.randn(1, 1, 512, 512)
+    model = UNetModule(n_input_channels=in_channels, n_output_channels=out_channels)
+    x = torch.randn(batch_size, in_channels, 512, 512)
     outs = model(x)
     print([y.shape for y in outs])
