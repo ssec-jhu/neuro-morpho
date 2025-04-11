@@ -74,7 +74,7 @@ class CometLogger(base.Logger):
 
     @override
     def log_metrics(self, metrics: dict[str, str | float | int]) -> None:
-        self.experiment.log_metrics(metrics)
+        self.experiment.log_parameters(metrics)
 
     def log_code(self, folder: Path | str) -> None:
         self.experiment.log_code(folder=folder)
