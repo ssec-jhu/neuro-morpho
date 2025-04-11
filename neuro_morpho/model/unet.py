@@ -130,7 +130,8 @@ class UNet(base.BaseModel):
             for x, y in tqdm(train_data_loader, desc="Training", unit="batch", position=1):
                 optimizer.zero_grad()
 
-                x = self.cast_fn(x)
+                x = self.cast_fn(x)  # b, 1, h, w
+                # b, n_lbls, h, w
                 y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
                 pred = self.model(x)
@@ -152,6 +153,7 @@ class UNet(base.BaseModel):
                         logger.log_scalar(name, loss.item(), step=step, train=True)
                     logger.log_scalar("loss", loss.item(), step=step, train=True)
 
+                    # select a random sample from the batch
                     sample_idx = np.random.choice(x.shape[0], size=1)[0]
                     sample_x = x[sample_idx, ...].squeeze()
                     sample_y = y[sample_idx, ...].squeeze()

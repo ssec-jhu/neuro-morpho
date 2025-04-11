@@ -7,6 +7,20 @@ import neuro_morpho.model.base as base
 from neuro_morpho.reports import generator
 
 
+def _config_line_filter(line: str) -> bool:
+    return len(line) > 0 and not (line.startswith("#") or line.startswith("import"))
+
+
+def _config_line_to_pair(line: str) -> list[str]:
+    return [kv.strip() for kv in line.split("=")]
+
+
+def config_str_to_dict(config_str: str) -> dict:
+    """Converts a Gin.config_str() to a dict for logging with comet.ml"""
+    lines = config_str.splitlines()
+    return {k: v for k, v in map(_config_line_to_pair, filter(_config_line_filter, lines))}
+
+
 @gin.configurable
 def run(
     model: base.BaseModel,
@@ -40,6 +54,13 @@ def run(
     report_output_dir = Path(report_output_dir)
 
     if logger is not None:
+        if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
+            logger.log_metrics(config)
+
+        logger.log_code(
+            folder=Path(__file__).parent,
+        )
+
         model.exp_id = logger.experiment.get_key()
         model = model.fit(
             training_x_dir,

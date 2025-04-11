@@ -10,7 +10,7 @@ import neuro_morpho.data.data_loader
 import neuro_morpho.model.transforms
 
 
-IN_SIZE = (64, 64)  # Size of the input images
+IN_SIZE = (1024, 1024)  # Size of the input images
 
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
@@ -96,8 +96,10 @@ CombinedLoss.losses = (
 
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
-UNet.encoder_channels = [64, 128, 256, 512, 1024]
-UNet.decoder_channels = [512, 256, 128, 64]
+UNet.encoder_channels = [2, 4, 8, 16, 32]
+UNet.decoder_channels = [16, 8, 4, 2]
+# UNet.encoder_channels = [64, 128, 256, 512, 1024]
+# UNet.decoder_channels = [512, 256, 128, 64]
 UNet.device = "cuda"
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader

@@ -70,3 +70,7 @@ class CometLogger(base.Logger):
                 figure_name=f"{name}.html",
                 step=step,
             )
+
+    @override
+    def log_metrics(self, metrics: dict[str, str | float | int]) -> None:
+        self.experiment.log_metrics(metrics)
