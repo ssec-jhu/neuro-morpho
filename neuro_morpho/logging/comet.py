@@ -4,8 +4,8 @@ from typing import override
 
 import comet_ml
 import gin
+import matplotlib.pyplot as plt
 import numpy as np
-import plotly.express as px
 
 from neuro_morpho.logging import base
 
@@ -47,28 +47,21 @@ class CometLogger(base.Logger):
     def log_triplet(
         self, in_img: np.ndarray, lbl_img: np.ndarray, out_img: np.ndarray, name: str, step: int, train: bool
     ) -> None:
-        img_seq = [
-            in_img / in_img.max(),
-            out_img / out_img.max(),
-            lbl_img / lbl_img.max(),
-        ]
-
-        fig = px.imshow(
-            np.array(img_seq),
-            facet_col=0,
-            labels={"facet_col": "Image"},
-            binary_string=True,
-        )
-        titles = ["Input Image", "Predicted Image", "Label Image"]
-        for i, title in enumerate(titles):
-            fig.layout.annotations[i].update(text=title)
+        fig, (ax_x, ax_pred, ax_y) = plt.subplots(ncols=3, nrows=1, figsize=(30, 10))
+        ax_x.imshow(np.log(in_img), cmap="Greys_r")
+        ax_x.set_title("log(Input)")
+        ax_x.axis("off")
+        ax_pred.imshow(out_img, vmin=0, vmax=1, cmap="Greys_r")
+        ax_pred.set_title("Predicted")
+        ax_pred.axis("off")
+        ax_y.imshow(lbl_img, cmap="Greys_r")
+        ax_y.set_title("Label")
+        ax_y.axis("off")
 
         ctx = self.experiment.train if train else self.experiment.test
         with ctx():
             self.experiment.log_figure(
-                # figure=fig.to_html(),
                 figure=fig,
-                figure_name=f"{name}.html",
                 step=step,
             )
 
