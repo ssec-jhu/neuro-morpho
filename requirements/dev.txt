@@ -8,3 +8,4 @@ scipy==1.15.2
 pandas==2.2.3
 comet_ml==3.49.7
 opencv-python-headless==4.11.0.86
+skan==0.12.2
