@@ -210,8 +210,8 @@ class UNet(base.BaseModel):
     @override
     def save(self, path: str | Path) -> None:
         save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")
-        with save_path.open("w") as f:
-            torch.save(self.model.state_dict(), f)
+        print("Saving model to", save_path)
+        torch.save(self.model.state_dict(), save_path)
 
     @override
     def load(self, path: str | Path) -> None:
