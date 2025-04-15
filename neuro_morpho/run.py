@@ -55,7 +55,7 @@ def run(
 
     if logger is not None:
         if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
-            logger.log_metrics(config)
+            logger.log_parameters(config)
 
         logger.log_code(
             folder=Path(__file__).parent,

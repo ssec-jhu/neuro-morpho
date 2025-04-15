@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 
 
@@ -14,6 +16,10 @@ class Logger:
         """Log an image triplet (e.g., for visualization purposes)."""
         raise NotImplementedError
 
-    def log_metrics(self, metrics: dict[str, str | float | int]) -> None:
+    def log_parameters(self, metrics: dict[str, str | float | int]) -> None:
         """Log a dictionary of metrics."""
+        raise NotImplementedError
+
+    def log_code(self, folder: str | Path) -> None:
+        """Log the code directory."""
         raise NotImplementedError

@@ -58,8 +58,7 @@ class NeuroMorphoDataset(td.Dataset):
             dim=0,
         )  # [n_lbls+1, h, w]
 
-        if self.aug_transform:
-            stack = self.aug_transform(stack)
+        stack = self.aug_transform(stack) if self.aug_transform else stack
 
         img = stack[:1, ...]  # [1, h, w]
         lbl = stack[1:, ...]  # [n_lbls, h, w]
@@ -113,12 +112,3 @@ def build_dataloader(
         num_workers=num_workers,
         pin_memory=True,
     )
-
-
-if __name__ == "__main__":
-    # Test the data loader
-    data_dir = Path("data/processed/train")
-    dataloader = build_dataloader(data_dir, batch_size=2, num_workers=0)
-    for x, y in dataloader:
-        print(x.shape, y.shape)
-        break
