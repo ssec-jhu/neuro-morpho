@@ -1,5 +1,4 @@
-import argparse
-
+import fire
 import gin
 import gin.torch.external_configurables
 import torchvision
@@ -18,23 +17,16 @@ def register_torch_transforms():
     gin.external_configurable(torchvision.transforms.v2.ToDtype, module="torchvision.transforms.v2")
 
 
-if __name__ == "__main__":
+def main(config: str = "config.gin") -> None:
+    """Run the main function.
+
+    Args:
+        config (str): The path to the gin configuration file.
+    """
     register_torch_transforms()
-
-    parser = argparse.ArgumentParser(
-        prog="neuro_morpho",
-        description="NeuroMorpho training and reporting CLI.",
-    )
-
-    parser.add_argument(
-        "config",
-        nargs="?",
-        type=str,
-        help="The path to the gin configuration file.",
-    )
-
-    args = parser.parse_args()
-    config = args.config or "config.gin"
-    print(f"Loading gin config from {config}")
     gin.parse_config_file(config)
     run.run()
+
+
+if __name__ == "__main__":
+    fire.Fire(run)
