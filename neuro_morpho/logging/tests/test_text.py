@@ -33,9 +33,9 @@ def test_text_logger_log_triplet(tmp_path: Path) -> None:
     """Test logging a scalar value."""
     logger = TextLogger(tmp_path)
 
-    in_img = np.eye(10, 10) * 5
-    lbl_img = np.eye(10, 10)
-    out_img = np.eye(10, 10) * 0.5
+    in_img = (np.eye(10, 10) + 1) * 5
+    lbl_img = np.eye(10, 10) + 1
+    out_img = (np.eye(10, 10) + 1) * 0.5
     train_triplet_dir = tmp_path / "triplets" / "train"
     logger.log_triplet(in_img, lbl_img, out_img, "test_triplet", 1, train=True)
     assert train_triplet_dir.exists()

@@ -57,6 +57,7 @@ class CometLogger(base.Logger):
         ax_y.imshow(lbl_img, cmap="Greys_r")
         ax_y.set_title("Label")
         ax_y.axis("off")
+        self.experiment.log_figure(figure=fig, figure_name=f"{name}", step=step)
         plt.savefig(f"{name}-{step}.png")
 
     @override
