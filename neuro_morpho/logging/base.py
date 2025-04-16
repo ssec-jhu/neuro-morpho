@@ -17,7 +17,7 @@ class Logger:
         raise NotImplementedError
 
     def log_parameters(self, metrics: dict[str, str | float | int]) -> None:
-        """Log a dictionary of metrics."""
+        """Log a dictionary of hyperparameters."""
         raise NotImplementedError
 
     def log_code(self, folder: str | Path) -> None:

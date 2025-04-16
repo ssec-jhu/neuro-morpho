@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import override
 
@@ -51,3 +52,19 @@ class TextLogger(base.Logger):
             pad_inches=0.1,
         )
         plt.close(fig)
+
+    @override
+    def log_parameters(self, metrics: dict[str, str | float | int]) -> None:
+        with open(self.log_dir / "parameters.json", "a") as f:
+            json.dump(metrics, f)
+
+    @override
+    def log_code(self, folder: str | Path) -> None:
+        code_dir = self.log_dir / "code"
+        code_dir.mkdir(parents=True, exist_ok=True)
+        for file in Path(folder).rglob("*"):
+            if file.is_file():
+                relative_path = file.relative_to(folder)
+                target_path = code_dir / relative_path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_text(file.read_text())
