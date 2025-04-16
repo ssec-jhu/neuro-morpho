@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from neuro_morpho.logging import base
+from neuro_morpho.logging.plots import plot_triplet
 
 
 class TextLogger(base.Logger):
@@ -20,8 +21,7 @@ class TextLogger(base.Logger):
         self.triplet_dir = self.log_dir / "triplets"
         for subdir in ["train", "test"]:
             (self.log_dir / subdir).mkdir(parents=True, exist_ok=True)
-        if not self.triplet_dir.exists():
-            self.triplet_dir.mkdir(parents=True, exist_ok=True)
+            (self.triplet_dir / subdir).mkdir(parents=True, exist_ok=True)
 
     @override
     def log_scalar(self, name: str, value: float, step: int, train: bool) -> None:
@@ -40,19 +40,14 @@ class TextLogger(base.Logger):
         train: bool,
     ) -> None:
         subdir = "train" if train else "test"
-
-        _, (ax_x, ax_pred, ax_y) = plt.subplots(ncols=3, nrows=1, figsize=(30, 10))
-        ax_x.imshow(np.log(in_img), cmap="Greys_r")
-        ax_x.set_title("log(Input)")
-        ax_x.axis("off")
-        ax_pred.imshow(out_img, vmin=0, vmax=1, cmap="Greys_r")
-        ax_pred.set_title("Predicted")
-        ax_pred.axis("off")
-        ax_y.imshow(lbl_img, cmap="Greys_r")
-        ax_y.set_title("Label")
-        ax_y.axis("off")
-        plt.savefig(
+        fig = plot_triplet(
+            in_img=in_img,
+            lbl_img=lbl_img,
+            out_img=out_img,
+        )
+        fig.savefig(
             self.triplet_dir / subdir / f"{name}_{step}.png",
             bbox_inches="tight",
             pad_inches=0.1,
         )
+        plt.close(fig)

@@ -394,24 +394,6 @@ class SpatialAttention(nn.Module):
         return self.sigmoid(x)
 
 
-class UnetAttention(nn.Module):
-    def __init__(self):
-        super(UnetAttention, self).__init__()
-        self.encoder = Encoder()
-        self.decoder = Decoder()
-
-    def forward(self, x):
-        out1, out2, out3, out4, x = self.encoder(x.float())
-        x, aux_128, aux_64, aux_32 = self.decoder(out1, out2, out3, out4, x)
-        print("UNetAttention===========")
-        print(x.shape, aux_128.shape, aux_64.shape, aux_32.shape)
-        print("================================")
-        print("Squeeze")
-        print(x.squeeze().shape, aux_128.squeeze().shape, aux_64.squeeze().shape, aux_32.squeeze().shape)
-        print("================================")
-        return x.squeeze(), aux_128.squeeze(), aux_64.squeeze(), aux_32.squeeze()
-
-
 if __name__ == "__main__":
     batch_size, in_channels, out_channels = 2, 1, 1
     model = Encoder(in_channels=in_channels, channels=[64, 128, 256, 512, 1024])
