@@ -24,3 +24,18 @@ def test_Norm2One() -> None:
     # Check that the min is 0 and max is 1
     assert abs(normalized_arr.min()) == 1 / 4
     assert abs(normalized_arr.max() - 1) < 1e-7
+
+
+def test_DownSample() -> None:
+    """Test the downsample function."""
+    arr = torch.from_numpy(
+        np.array([[1, 2, 1, 2], [1, 2, 1, 2], [3, 4, 3, 4], [3, 4, 3, 4]], dtype=np.float32).reshape(1, 4, 4)
+    )
+    downsampled_arr = transforms.DownSample(in_size=(4, 4), factors=0.5)(arr)
+
+    # Check that the shape is correct after downsampling
+    assert downsampled_arr.shape == (1, 2, 2)
+    # Test with multiple factors
+    downsampled_arr_multi = transforms.DownSample(in_size=(4, 4), factors=[0.5, 0.25])(arr)
+    assert downsampled_arr_multi[0].shape == (1, 2, 2)
+    assert downsampled_arr_multi[1].shape == (1, 1, 1)
