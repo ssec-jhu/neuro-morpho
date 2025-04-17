@@ -29,7 +29,7 @@ from collections.abc import Callable
 
 import gin
 import torch
-import torch.nn.functional as F
+import torchvision
 
 NAME_LOSS = tuple[str, torch.Tensor]
 PRED = torch.Tensor
@@ -38,22 +38,31 @@ TARGET = torch.Tensor
 LOSS_FN = Callable[[PRED, TARGET], tuple[NAME_LOSS, ...]]
 
 
-@gin.configurable(allowlist=["alpha", "gamma", "coefs"])
+@gin.configurable(allowlist=["alpha", "gamma", "reduction"])
 class WeightedFocalLoss(torch.nn.Module):
-    "Non weighted version of Focal Loss"
+    """Weighted version of Focal Loss.
 
-    def __init__(self, beta=0.25, gamma=2, coefs: list[float] = None):
+    https://arxiv.org/pdf/1708.02002
+
+    Args:
+        alpha: Weighting factor in range (0, 1) to balance positive vs negative examples.
+        gamma: Focusing parameter to reduce the relative loss for well-classified examples.
+    """
+
+    def __init__(self, alpha: float = 0.25, gamma: float = 2, reduction: str = "mean"):
         super(WeightedFocalLoss, self).__init__()
-        self.beta = torch.tensor(beta).cuda()
+        self.alpha = alpha
         self.gamma = gamma
-        self.coefs = coefs
+        self.reduction = reduction
 
-    def forward(self, inputs, targets) -> tuple[str, torch.Tensor]:
-        BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
-        targets = targets.type(torch.long)
-        pt = torch.exp(-BCE_loss)
-        F_loss = self.beta * (1 - pt) ** self.gamma * BCE_loss
-        return "weighted_focal_loss", F_loss.mean()
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> tuple[str, torch.Tensor]:
+        return "weighted_focal_loss", torchvision.ops.sigmoid_focal_loss(
+            inputs,
+            targets,
+            alpha=self.alpha,
+            gamma=self.gamma,
+            reduction=self.reduction,
+        )
 
 
 @gin.configurable(allowlist=["smooth"])
