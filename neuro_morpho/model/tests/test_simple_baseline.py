@@ -65,7 +65,7 @@ def test_load(tmp_path: Path) -> None:
     model.save(tmp_path)
 
     new_model = simple_baseline.SimpleBaseLine()
-    new_model.load(tmp_path/(model.name + ".txt"))
+    new_model.load(tmp_path / (model.name + ".txt"))
 
     # Check that the loaded model has the same percentile
     assert new_model.percentile == 90

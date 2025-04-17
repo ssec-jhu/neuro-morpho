@@ -11,14 +11,14 @@ from torchvision.transforms import v2
 class Standardize(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x - x.mean(dim=(1, 2), keepdim=False) / x.std(dim=(1, 2), keepdim=False)
+        return (x - x.mean(dim=(1, 2), keepdim=False)) / x.std(dim=(1, 2), keepdim=False)
 
 
 @gin.register
 class Norm2One(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x / x.max(dim=1, keepdim=True).values.max(dim=2, keepdim=True).values
+        return x / x.max()
 
 
 @gin.configurable(allowlist=["in_size", "factors"])
@@ -62,20 +62,3 @@ class DownSample(torch.nn.Module):
             return self.transforms(x)
         else:
             return tuple(t(x) for t in self.transforms)
-
-
-class Identity(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    @override
-    def forward(self, stack: torch.Tensor) -> torch.Tensor:
-        """Forward pass for identity transform. Returns the input tensor unchanged.
-
-        Args:
-            stack (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: The same input tensor.
-        """
-        return stack
