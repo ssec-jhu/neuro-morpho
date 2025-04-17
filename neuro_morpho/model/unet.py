@@ -205,18 +205,16 @@ class UNet(base.BaseModel):
 
     @override
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        return self.model(torch.from_numpy(x).float().to(self.device)).squeeze(1).cpu().detach().numpy()
+        return self.model(torch.from_numpy(x).float().to(self.device))[0].squeeze(1).cpu().detach().numpy()
 
     @override
     def save(self, path: str | Path) -> None:
         save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")
-        print("Saving model to", save_path)
         torch.save(self.model.state_dict(), save_path)
 
     @override
     def load(self, path: str | Path) -> None:
         self.model.load_state_dict(torch.load(path, map_location=self.device))
-        self.model.eval()
 
 
 class UNetModule(nn.Module):
@@ -392,23 +390,3 @@ class SpatialAttention(nn.Module):
         x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv1(x)
         return self.sigmoid(x)
-
-
-if __name__ == "__main__":
-    batch_size, in_channels, out_channels = 2, 1, 1
-    model = Encoder(in_channels=in_channels, channels=[64, 128, 256, 512, 1024])
-    x = torch.randn(batch_size, in_channels, 512, 512)
-    outs = model(x)
-    print([y.shape for y in outs])
-    model2 = Decoder(
-        in_channels=outs[-1].shape[1],
-        out_channels=out_channels,
-        channels=[512, 256, 128, 64],
-    )
-    outs2 = model2(outs)
-    print([y.shape for y in outs2])
-
-    model = UNetModule(n_input_channels=in_channels, n_output_channels=out_channels)
-    x = torch.randn(batch_size, in_channels, 512, 512)
-    outs = model(x)
-    print([y.shape for y in outs])
