@@ -5,7 +5,7 @@ import pytest
 from neuro_morpho.model.base import BaseModel
 
 
-def test_base_model_init_raises():
+def test_base_model_init_raises() -> None:
     """Test that all base model methods raise"""
 
     model = BaseModel()

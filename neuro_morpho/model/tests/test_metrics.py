@@ -5,7 +5,7 @@ import numpy as np
 from neuro_morpho.model import metrics
 
 
-def test_accuracy():
+def test_accuracy() -> None:
     """Test the accuracy metric."""
     pred = np.array([0.8, 0.6, 0.4, 0.9, 0.2], dtype=np.float32)
     lbl = np.array([1, 1, 1, 1, 1], dtype=np.float32)
@@ -16,7 +16,7 @@ def test_accuracy():
     assert value == 0.6  # 3 out of 5 predictions are correct
 
 
-def test_class_accuracy():
+def test_class_accuracy() -> None:
     """Test the class accuracy metric."""
     pred = np.array([0.8, 0.6, 0.4, 0.9, 0.2], dtype=np.float32)
     lbl = np.array([1, 1, 1, 1, 0], dtype=np.float32)

@@ -5,7 +5,7 @@ import torch
 from neuro_morpho.model import loss
 
 
-def test_weighted_focal_loss():
+def test_weighted_focal_loss() -> None:
     """Test the WeightedFocalLoss class."""
 
     loss_fn = loss.WeightedFocalLoss(alpha=0.25, gamma=2)
@@ -18,7 +18,7 @@ def test_weighted_focal_loss():
     assert len(loss_value.shape) == 0
 
 
-def test_dice_loss():
+def test_dice_loss() -> None:
     """Test the DiceLoss class."""
 
     loss_fn = loss.DiceLoss(smooth=1.0)
@@ -31,7 +31,7 @@ def test_dice_loss():
     assert len(loss_value.shape) == 0
 
 
-def test_weighted_map():
+def test_weighted_map() -> None:
     """Test the WeightedMap class."""
 
     loss_fn = loss.WeightedFocalLoss(alpha=0.25, gamma=2)
@@ -47,7 +47,7 @@ def test_weighted_map():
     assert len(loss_value.shape) == 0
 
 
-def test_combined_loss():
+def test_combined_loss() -> None:
     """Test the CombinedLoss class."""
     loss_fn1 = loss.WeightedFocalLoss(alpha=0.25, gamma=2)
     loss_fn2 = loss.DiceLoss(smooth=1.0)
