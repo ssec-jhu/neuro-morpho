@@ -6,7 +6,6 @@ import gin
 import numpy as np
 import pandas as pd
 import skan
-import skimage as ski
 
 VALID_DISTANCES = {"euclidean", "manhattan"}
 ERR_INVALID_DIST = f"Invalid distance type. Must be one of {VALID_DISTANCES}"
@@ -126,7 +125,7 @@ def calculate_branch_lengths(skan_skel_data: pd.DataFrame, dist_type: str = "euc
     if dist_type not in VALID_DISTANCES:
         raise ValueError(ERR_INVALID_DIST)
 
-    distances = np.array([0] * len(skan_skel_data))
+    distances = None
     if dist_type == "euclidean":
         distances = skan_skel_data["euclidean_distance"].values
     else:
@@ -195,19 +194,3 @@ def skeleton_analysis(
             stats[skeleton_id][stat_name] = stat_fn(sub_df)
 
     return stats
-
-
-if __name__ == "__main__":
-    import functools
-
-    skeleton = ski.io.imread("/home/ryanhausen/Downloads/Skeleton-Sample-2-time-100.00.pgm")
-    stat_fns = [
-        ("n_branches", calculate_n_branches),
-        ("n_tip_points", calculate_n_tip_points),
-        ("total_length", functools.partial(calculate_total_length, dist_type="euclidean")),
-        ("branch_lengths", functools.partial(calculate_branch_lengths, dist_type="euclidean")),
-    ]
-
-    branch_data = skeleton_analysis(skeleton, stat_fns, assume_single_skeleton=True)
-
-    print(branch_data)
