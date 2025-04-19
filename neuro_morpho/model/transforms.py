@@ -1,10 +1,9 @@
 """Transforms for the NeuroMorpho dataset."""
 
-from typing import override
-
 import gin
 import torch
 from torchvision.transforms import v2
+from typing_extensions import override
 
 
 @gin.register
