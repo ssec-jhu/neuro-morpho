@@ -149,7 +149,7 @@ def skeleton_analysis(
     pixel_size: float = 1,
     *,
     assume_single_skeleton: bool = False,
-):
+) -> dict[str, dict[str, float]]:
     """Generate a summary of the skeleton analysis.
 
     Args:
