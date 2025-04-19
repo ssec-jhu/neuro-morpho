@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
-from typing import override
 
 import comet_ml
 import gin
 import matplotlib.pyplot as plt
 import numpy as np
+from typing_extensions import override
 
 from neuro_morpho.logging import base
 

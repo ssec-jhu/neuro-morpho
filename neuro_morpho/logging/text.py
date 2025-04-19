@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from typing import override
 
 import matplotlib.pyplot as plt
 import numpy as np
+from typing_extensions import override
 
 from neuro_morpho.logging import base
 from neuro_morpho.logging.plots import plot_triplet

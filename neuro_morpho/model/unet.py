@@ -27,7 +27,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 import gin
 import numpy as np
@@ -35,6 +35,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as td
 from tqdm import tqdm
+from typing_extensions import override
 
 import neuro_morpho.data.data_loader as data_loader
 import neuro_morpho.logging.base as base_logging
@@ -214,7 +215,7 @@ class UNet(base.BaseModel):
 
     @override
     def load(self, path: str | Path) -> None:
-        self.model.load_state_dict(torch.load(path, map_location=self.device))
+        self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
 
 class UNetModule(nn.Module):
