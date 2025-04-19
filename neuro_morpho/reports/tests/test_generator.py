@@ -69,6 +69,7 @@ def test_parse_single_file(tmp_path: Path):
     ski.io.imsave(input_file, generate_sample_skeleton().astype(np.uint8))
 
     # Call the function to parse the single file
+    gin.clear_config()
     gin.bind_parameter(
         "neuro_morpho.reports.stats.skeleton_analysis.stat_fns",
         [
@@ -81,3 +82,31 @@ def test_parse_single_file(tmp_path: Path):
     with open(output_file, "r") as f:
         output_data = json.load(f)
         assert output_data == expected_outs
+
+
+def test_generate_statistics(tmp_path: Path):
+    """Test the generation of statistics."""
+    # Create a temporary directory
+    in_dir = tmp_path / "input"
+    out_dir = tmp_path / "output"
+    in_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create some test input files
+    for i in range(3):
+        input_file = in_dir / f"test_{i}.pgm"
+        ski.io.imsave(input_file, generate_sample_skeleton().astype(np.uint8))
+
+    # Call the function to generate statistics
+    gin.clear_config()
+    gin.bind_parameter(
+        "neuro_morpho.reports.stats.skeleton_analysis.stat_fns",
+        [
+            ("stat1", lambda _: 0.5),
+        ],
+    )
+    generator.generate_statistics(in_dir, out_dir)
+
+    # Check if the output files are created
+    for i in range(3):
+        assert (out_dir / f"test_{i}.json").exists()
