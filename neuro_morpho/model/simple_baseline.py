@@ -1,7 +1,6 @@
 """A simple baseline model for testing."""
 
 from pathlib import Path
-from typing import override
 
 import gin
 import numpy as np
@@ -9,6 +8,7 @@ import scipy.ndimage as ndi
 import skimage as ski
 import skimage.morphology
 from tqdm import tqdm
+from typing_extensions import override
 
 import neuro_morpho.model.base as base
 

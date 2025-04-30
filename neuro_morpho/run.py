@@ -2,8 +2,23 @@ from pathlib import Path
 
 import gin
 
+import neuro_morpho.logging.base as log
 import neuro_morpho.model.base as base
 from neuro_morpho.reports import generator
+
+
+def _config_line_filter(line: str) -> bool:
+    return len(line) > 0 and not (line.startswith("#") or line.startswith("import"))
+
+
+def _config_line_to_pair(line: str) -> list[str]:
+    return [kv.strip() for kv in line.split("=")]
+
+
+def config_str_to_dict(config_str: str) -> dict:
+    """Converts a Gin.config_str() to a dict for logging with comet.ml"""
+    lines = config_str.splitlines()
+    return {k: v for k, v in map(_config_line_to_pair, filter(_config_line_filter, lines))}
 
 
 @gin.configurable
@@ -18,6 +33,7 @@ def run(
     model_stats_output_dir: str | Path,
     labled_stats_outpur_dir: str | Path,
     report_output_dir: str | Path,
+    logger: log.Logger = None,
 ):
     """Run the model on the data and save the results.
 
@@ -37,12 +53,30 @@ def run(
     labled_stats_outpur_dir = Path(labled_stats_outpur_dir)
     report_output_dir = Path(report_output_dir)
 
-    model = model.fit(
-        training_x_dir,
-        training_y_dir,
-        testing_x_dir,
-        testing_y_dir,
-    )
+    if logger is not None:
+        if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
+            logger.log_parameters(config)
+
+        logger.log_code(
+            folder=Path(__file__).parent,
+        )
+
+        model.exp_id = logger.experiment.get_key()
+        model = model.fit(
+            training_x_dir,
+            training_y_dir,
+            testing_x_dir,
+            testing_y_dir,
+            logger=logger,
+        )
+    else:
+        model = model.fit(
+            training_x_dir,
+            training_y_dir,
+            testing_x_dir,
+            testing_y_dir,
+        )
+
     model.save(model_save_dir)
 
     model.predict_dir(testing_x_dir, model_out_y_dir)
