@@ -22,9 +22,9 @@ CometLogger.disabled = False
 torch.optim.Adam.lr = 0.001
 
 pos/class_accuracy.class_idx = 1
-pos/class_accuracy.threshold = 0.5
+pos/class_accuracy.threshold = 0.62
 neg/class_accuracy.class_idx = 0
-neg/class_accuracy.threshold = 0.5
+neg/class_accuracy.threshold = 0.62
 
 
 WeightedFocalLoss.alpha = 0.25
