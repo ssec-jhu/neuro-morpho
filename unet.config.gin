@@ -1,0 +1,149 @@
+import gin.torch
+
+import neuro_morpho.model.unet
+import neuro_morpho.reports.generator
+import neuro_morpho.reports.stats
+import neuro_morpho.logging.comet
+import neuro_morpho.cli
+import neuro_morpho.model.loss
+import neuro_morpho.data.data_loader
+import neuro_morpho.model.transforms
+
+
+IN_SIZE = (64, 64)  # Size of the input images
+
+
+CometLogger.workspace = "ssec-dendrite-segmentation"
+CometLogger.project_name = "unet-classification"
+CometLogger.disabled = False
+
+
+
+torch.optim.Adam.lr = 0.001
+
+pos/class_accuracy.class_idx = 1
+pos/class_accuracy.threshold = 0.62
+neg/class_accuracy.class_idx = 0
+neg/class_accuracy.threshold = 0.62
+
+
+WeightedFocalLoss.alpha = 0.25
+WeightedFocalLoss.gamma = 2.0
+DiceLoss.smooth = 1
+
+v2.RandomCrop.size = %IN_SIZE  # Size of the random crop for training images
+v2.CenterCrop.size = %IN_SIZE  # Size of the center crop for validation/test images
+
+DownSample.in_size = %IN_SIZE  # Size of the downsampled images
+DownSample.factors = (1.0, 0.50, 0.25, 0.125)
+
+dice/WeightedMap.loss_fn = @DiceLoss()
+dice/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
+weighted_focal_loss/WeightedMap.loss_fn = @WeightedFocalLoss()
+weighted_focal_loss/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
+
+
+
+
+train/v2.Compose.transforms = [
+    @v2.ToTensor(),  # Convert to tensor
+    @v2.CenterCrop(), # Random crop for training images
+]
+
+
+test/v2.Compose.transforms = [
+    @v2.ToTensor(),  # Convert to tensor
+    @v2.CenterCrop(), # Center crop for validation/test images
+]
+
+ynorm/v2.Compose.transforms = [
+    @Norm2One(),
+    @DownSample(),
+]
+
+
+
+
+train/build_dataloader.x_dir = "data/processed/train/imgs"
+train/build_dataloader.y_dir = "data/processed/train/lbls"
+train/build_dataloader.batch_size = 2
+train/build_dataloader.num_workers = 4
+train/build_dataloader.shuffle = True
+train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
+train/build_dataloader.x_norm = @Standardize()
+train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+
+
+test/build_dataloader.x_dir = "data/processed/test/imgs"
+test/build_dataloader.y_dir = "data/processed/test/lbls"
+test/build_dataloader.batch_size = 2
+test/build_dataloader.num_workers = 4
+test/build_dataloader.shuffle = True
+test/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for testing
+test/build_dataloader.x_norm = @Standardize()
+test/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+
+
+
+CombinedLoss.weights = (
+    1.0,  # weight for dice
+    0.5,  # weight for focal loss
+)
+CombinedLoss.losses = (
+    @dice/WeightedMap(),          # First loss function (Dice)
+    @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
+)
+
+ChannelAttention.ratio = 16
+
+UNet.n_input_channels = 1
+UNet.n_output_channels = 1
+# UNet.encoder_channels = [2, 4, 8, 16, 32]
+# UNet.decoder_channels = [16, 8, 4, 2]
+UNet.encoder_channels = [64, 128, 256, 512, 1024]
+UNet.decoder_channels = [512, 256, 128, 64]
+UNet.device = "cuda"
+
+UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
+UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
+UNet.fit.epochs = 10
+UNet.fit.optimizer = @torch.optim.Adam
+UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
+UNet.fit.metric_fns = [
+    @pos/class_accuracy,
+    @neg/class_accuracy,
+]
+UNet.fit.log_every = 10
+
+
+
+generate_report.reports = [
+    @noboxplot_summary,
+]
+
+calculate_n_branches.include_isolated_branches = False
+calculate_n_branches.include_isolated_cycles = False
+calculate_n_tip_points.include_isolated_branches = False
+calculate_total_length.dist_type = "euclidean"
+
+skeleton_analysis.pixel_size = 1
+skeleton_analysis.assume_single_skeleton = True
+skeleton_analysis.stat_fns = [
+    ("Number of Branches", @calculate_n_branches),
+    ("Number of Tips", @calculate_n_tip_points),
+    ("Total Length", @calculate_total_length),
+]
+
+
+
+run.model = @UNet()
+run.training_x_dir = "data/processed/train/imgs"
+run.training_y_dir = "data/processed/train/lbls"
+run.testing_x_dir = "data/processed/test/imgs"
+run.testing_y_dir = "data/processed/test/lbls"
+run.model_save_dir = "models"
+run.model_out_y_dir = "data/output"
+run.model_stats_output_dir = "data/stats/model"
+run.labled_stats_outpur_dir = "data/stats/label"
+run.report_output_dir = "data/report"
+run.logger = @CometLogger()

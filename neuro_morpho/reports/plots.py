@@ -85,13 +85,3 @@ def plot_sabya(
     ax.set_xticklabels(data.columns)
 
     return ax.figure
-
-
-if __name__ == "__main__":
-    import pandas as pd
-
-    data = pd.DataFrame(np.random.normal(5, 15, size=(100, 4)), columns=["a", "b", "c", "d"])
-
-    fig = plot_sabya(data)
-
-    plt.show()
