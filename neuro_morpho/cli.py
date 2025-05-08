@@ -29,4 +29,4 @@ def main(config: str = "config.gin") -> None:
 
 
 if __name__ == "__main__":
-    fire.Fire(run)
+    fire.Fire(main)
