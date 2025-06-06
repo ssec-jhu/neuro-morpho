@@ -196,7 +196,7 @@ class UNet(base.BaseModel):
             "log_every",
             "init_step",
             "model_id",
-            "models_dir",
+            "model_dir",
         ]
     )
     def fit(
@@ -215,24 +215,27 @@ class UNet(base.BaseModel):
         log_every: int = 10,
         init_step: int = 0,
         model_id: str | None = None,
-        models_dir: str | Path = Path("models"),
-        n_checkpoints: int = 5,  # Number of checkpoints to keep
+        model_dir: str | Path | None = None,
     ) -> base.BaseModel:
-        model_id = model_id or str(uuid.uuid4()).replace("-", "")
+        if model_id and model_dir:
+            model_path = Path(model_dir) / model_id
+            if model_path.exists():
+                self.load(model_path)
+                print(f"Resumed training from model: {model_path}")
+            else:
+                raise FileNotFoundError(f"Model directory not found: {model_path}")
 
-        model_dir = Path(models_dir) / model_id
-        checkpoint_dir = model_dir / "checkpoints"
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-
-        self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
 
-        train_data_loader = train_data_loader or data_loader.build_dataloader(training_x_dir, training_y_dir)
-        test_data_loader = test_data_loader or data_loader.build_dataloader(testing_x_dir, testing_y_dir)
+        if train_data_loader is None:
+            train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
+        if test_data_loader is None:
+            test_data_loader = data_loader.build_dataloader(testing_x_dir, testing_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
 
-        for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
+        # TODO: steps needs to be fixed
+        for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
             # x: b, 1, h, w
             # y: b, n_lbls, h, w
@@ -481,20 +484,28 @@ class UNet(base.BaseModel):
 
     @override
     def save(self, path: str | Path) -> None:
-        path = Path(path)
-        torch.save(
-            {"model_state_dict": self.model.state_dict(), "step": getattr(self, "step", 0)},
-            path,
-        )
+        save_dir = Path(path) / (self.exp_id if self.exp_id else "model")
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        model_path = save_dir / "model.pt"
+        step_path = save_dir / "step.txt"
+
+        torch.save(self.model.state_dict(), model_path)
+        with open(step_path, "w") as f:
+            f.write(str(self.step))
 
     @override
     def load(self, path: str | Path) -> None:
-        path = Path(path)
-        # We are the ones saving and loading the model, so we trust the source.
-        data = torch.load(path)  # nosec B614
-        self.model.load_state_dict(data["model_state_dict"])
-        self.model.to(self.device)
-        self.step = data.get("step", 0)
+        load_dir = Path(path)
+        model_path = load_dir / "model.pt"
+        step_path = load_dir / "step.txt"
+
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        if step_path.exists():
+            with open(step_path, "r") as f:
+                self.step = int(f.read())
+        else:
+            self.step = 0
 
 
 class UNetModule(nn.Module):
