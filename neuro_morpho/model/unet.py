@@ -98,6 +98,9 @@ class UNet(base.BaseModel):
             "metric_fns",
             "logger",
             "log_every",
+            "init_step",
+            "model_id",
+            "model_dir",
         ]
     )
     def fit(
@@ -115,7 +118,19 @@ class UNet(base.BaseModel):
         logger: base_logging.Logger = None,
         log_every: int = 10,
         init_step: int = 0,
+        model_id: str | None = None,
+        model_dir: str | Path | None = None,
     ) -> base.BaseModel:
+        if model_id and model_dir:
+            model_path = Path(model_dir) / model_id
+            if model_path.exists():
+                self.load(model_path)
+                print(f"Resumed training from model: {model_path}")
+            else:
+                raise FileNotFoundError(f"Model directory not found: {model_path}")
+
+        step = self.step if hasattr(self, "step") else init_step
+
         if train_data_loader is None:
             train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
         if test_data_loader is None:
@@ -123,7 +138,6 @@ class UNet(base.BaseModel):
 
         optimizer = optimizer(params=self.model.parameters())
 
-        step = init_step
         # TODO: steps needs to be fixed
         for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
@@ -292,12 +306,28 @@ class UNet(base.BaseModel):
 
     @override
     def save(self, path: str | Path) -> None:
-        save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")
-        torch.save(self.model.state_dict(), save_path)
+        save_dir = Path(path) / (self.exp_id if self.exp_id else "model")
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        model_path = save_dir / "model.pt"
+        step_path = save_dir / "step.txt"
+
+        torch.save(self.model.state_dict(), model_path)
+        with open(step_path, "w") as f:
+            f.write(str(self.step))
 
     @override
     def load(self, path: str | Path) -> None:
-        self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
+        load_dir = Path(path)
+        model_path = load_dir / "model.pt"
+        step_path = load_dir / "step.txt"
+
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        if step_path.exists():
+            with open(step_path, "r") as f:
+                self.step = int(f.read())
+        else:
+            self.step = 0
 
 
 class UNetModule(nn.Module):
