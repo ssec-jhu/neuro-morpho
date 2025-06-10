@@ -26,8 +26,8 @@ class NeuroMorphoDataset(td.Dataset):
             data_dir (str|Path): Directory containing the data.
             transform (v2.Transform, optional): Transform to be applied to the data. Defaults to None.
         """
-        self.img_files = list(Path(x_dir).glob("*.pgm"))
-        self.lbl_files = list(Path(y_dir).glob("*.pgm"))
+        self.img_files = list(Path(x_dir).glob("*.tif"))
+        self.lbl_files = list(Path(y_dir).glob("*.tif"))
         self.img_files.sort()
         self.lbl_files.sort()
 
@@ -112,3 +112,36 @@ def build_dataloader(
         num_workers=num_workers,
         pin_memory=True,
     )
+
+
+if __name__ == "__main__":
+    # Example usage
+    from tqdm import tqdm
+
+    import neuro_morpho.model.transforms as t
+
+    x_dir = Path("data/new/imgs")
+    y_dir = Path("data/new/lbls")
+    print(len(list(x_dir.glob("*.tif"))), len(list(y_dir.glob("*.tif"))))
+    dataloader = build_dataloader(
+        x_dir,
+        y_dir,
+        batch_size=4,
+        num_workers=4,
+        aug_transform=v2.Compose(
+            [
+                v2.ToImage(),
+                v2.ToDtype(dtype=torch.float32),
+                v2.RandomCrop(size=(1024, 1024)),  # Random crop for training images
+            ]
+        ),
+        y_norm=v2.Compose(
+            [
+                t.Norm2One(),
+                t.DownSample(in_size=(1024, 1024), factors=(1.0, 0.50, 0.25, 0.125)),
+            ]
+        ),
+    )
+    for i in tqdm(range(5), position=0, leave=True):
+        for img, lbl in tqdm(dataloader, position=1, leave=True):
+            pass
