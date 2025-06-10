@@ -215,6 +215,10 @@ class UNet(base.BaseModel):
                 sample_pred = pred[sample_idx, ...].squeeze()
                 logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
 
+            # Save checkpoint after each testing step
+            if model_dir and model_id:
+                self.save(Path(model_dir) / model_id)
+
         return self
 
     @override
