@@ -120,10 +120,22 @@ class UNet(base.BaseModel):
         init_step: int = 0,
         model_id: str | None = None,
         model_dir: str | Path | None = None,
+        n_checkpoints: int = 5,  # Number of checkpoints to keep
     ) -> base.BaseModel:
         if model_id and model_dir:
             model_path = Path(model_dir) / model_id
-            if model_path.exists():
+            checkpoint_dir = model_path / "checkpoints"
+            latest_checkpoint = None
+            if checkpoint_dir.exists() and any(checkpoint_dir.glob("checkpoint_*.pt")):
+                # Find the latest checkpoint by modification time
+                checkpoints = sorted(checkpoint_dir.glob("checkpoint_*.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if checkpoints:
+                    latest_checkpoint = checkpoints[0]
+            if latest_checkpoint is not None:
+                # Use self.load to restore from checkpoint
+                self.load(latest_checkpoint.parent)
+                print(f"Resumed training from checkpoint: {latest_checkpoint}")
+            elif model_path.exists():
                 self.load(model_path)
                 print(f"Resumed training from model: {model_path}")
             else:
@@ -138,8 +150,9 @@ class UNet(base.BaseModel):
 
         optimizer = optimizer(params=self.model.parameters())
 
+        checkpoint_paths = []  # Track saved checkpoints
         # TODO: steps needs to be fixed
-        for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
+        for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
             for x, y in tqdm(train_data_loader, desc="Training", unit="batch", position=1):
                 optimizer.zero_grad()
@@ -215,10 +228,26 @@ class UNet(base.BaseModel):
                 sample_pred = pred[sample_idx, ...].squeeze()
                 logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
 
-            # Save checkpoint after each testing step
+            # Save checkpoint after each testing step (end of epoch)
             if model_dir and model_id:
-                self.save(Path(model_dir) / model_id)
-
+                checkpoint_dir = Path(model_dir) / model_id / "checkpoints"
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                checkpoint_path = checkpoint_dir / f"checkpoint_step_{step}.pt"
+                # Use self.save to save checkpoint (step is tracked in self.step)
+                self.step = step
+                self.save(checkpoint_path.parent)
+                checkpoint_paths.append(checkpoint_path)
+                if len(checkpoint_paths) > n_checkpoints:
+                    oldest = checkpoint_paths.pop(0)
+                    if oldest.exists():
+                        oldest.unlink()
+        # After all epochs, save the latest checkpoint as model.pt one directory up
+        if model_dir and model_id and checkpoint_paths:
+            latest_checkpoint = checkpoint_paths[-1]
+            model_path = Path(model_dir) / model_id / "model.pt"
+            # Use self.save to save the final model
+            self.load(latest_checkpoint.parent)
+            self.save(model_path.parent)
         return self
 
     @override
@@ -314,25 +343,18 @@ class UNet(base.BaseModel):
         save_dir.mkdir(parents=True, exist_ok=True)
 
         model_path = save_dir / "model.pt"
-        step_path = save_dir / "step.txt"
-
-        torch.save(self.model.state_dict(), model_path)
-        with open(step_path, "w") as f:
-            f.write(str(self.step))
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'step': getattr(self, 'step', 0)
+        }, model_path)
 
     @override
     def load(self, path: str | Path) -> None:
         load_dir = Path(path)
         model_path = load_dir / "model.pt"
-        step_path = load_dir / "step.txt"
-
-        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
-        if step_path.exists():
-            with open(step_path, "r") as f:
-                self.step = int(f.read())
-        else:
-            self.step = 0
-
+        checkpoint = torch.load(model_path, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.step = checkpoint.get('step', 0)
 
 class UNetModule(nn.Module):
     def __init__(
