@@ -323,6 +323,10 @@ class UNet(base.BaseModel):
         # After all epochs save a copy in the models_dir
         self.save(model_dir / "model.pt")
 
+            # Save checkpoint after each testing step
+            if model_dir and model_id:
+                self.save(Path(model_dir) / model_id)
+
         return self
 
     @override
