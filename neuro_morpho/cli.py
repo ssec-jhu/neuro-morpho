@@ -4,7 +4,7 @@ import gin.torch.external_configurables
 import torchvision
 import torchvision.transforms.v2
 
-from neuro_morpho import run
+from neuro_morpho import run_testing, run_training
 
 
 def register_torch_transforms():
@@ -17,7 +17,7 @@ def register_torch_transforms():
     gin.external_configurable(torchvision.transforms.v2.ToDtype, module="torchvision.transforms.v2")
 
 
-def main(config: str = "config.gin") -> None:
+def main(config: str = "unet.config.gin") -> None:
     """Run the main function.
 
     Args:
@@ -25,7 +25,8 @@ def main(config: str = "config.gin") -> None:
     """
     register_torch_transforms()
     gin.parse_config_file(config)
-    run.run()
+    #run_training.run_training()
+    run_testing.run_testing()
 
 
 if __name__ == "__main__":

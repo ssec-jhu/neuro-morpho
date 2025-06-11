@@ -29,6 +29,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import cv2
 import gin
 import numpy as np
 import torch
@@ -40,6 +41,7 @@ from typing_extensions import override
 import neuro_morpho.data.data_loader as data_loader
 import neuro_morpho.logging.base as base_logging
 from neuro_morpho.model import base, loss, metrics
+from neuro_morpho.util import TilesMixin
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -65,14 +67,15 @@ def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
 
 
 @gin.register
-class UNet(base.BaseModel):
+class UNet(base.BaseModel, TilesMixin):
     def __init__(
         self,
         n_input_channels: int = 1,
         n_output_channels: int = 1,
         encoder_channels: list[int] = [64, 128, 256, 512, 1024],
         decoder_channels: list[int] = [512, 256, 128, 64],
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        device: str =  "cuda" if torch.cuda.is_available() else \
+            "mps" if torch.backends.mps.is_available() else "cpu"
     ):
         super(UNet, self).__init__()
         self.model = UNetModule(
@@ -206,8 +209,71 @@ class UNet(base.BaseModel):
 
     @override
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        return self.model(torch.from_numpy(x).float().to(self.device))[0].squeeze(1).cpu().detach().numpy()
+        
+        image_size = x.shape
+        #tiles_mixin = TilesMixin(tile_size, image_size)
+        image_tiles = self.tile_image(x)
 
+        n_y = len(self.y_coord)
+        n_x = len(self.x_coord)
+        pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+        for i in range(n_y):
+            for j in range(n_x):
+                tile = image_tiles[i * n_x + j]
+                # Start the inferring process
+                tile_flip_0 = tile[::-1, ...]       # Vertical flip
+                tile_flip_1 = tile[:, ::-1, ...]    # Horizontal flip
+                tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
+                tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
+                tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
+                with torch.no_grad():
+                    pred, _, _, _ = self.model(tile_torch)
+                    pred = torch.sigmoid(pred)
+                    pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
+                pred_ori = pred_ori.cpu().numpy()
+                pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
+                pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
+                pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
+                tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
+                pred_array[i * n_x + j, self.y_coord[i]:(self.y_coord[i] + self.tile_size),
+                           self.x_coord[j]:(self.x_coord[j] + self.tile_size)] = tile_pred
+                
+        # Averaging the result
+        non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
+        non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
+        non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
+        if self.tile_assembly == 'mean':
+            non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
+            pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
+        elif self.tile_assembly == 'max':
+            pred = np.max(pred_array * non_zero_mask, axis=0)
+        elif self.tile_assembly == 'nn': # nearest neighbor
+            pred = np.zeros(image_size, dtype=np.float32)
+            for idx in range(n_y * n_x):
+                pred[self.nearest_map == idx] = pred_array[idx, self.nearest_map == idx]
+        else:
+            pred = np.zeros(image_size, dtype=np.float32)
+            raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
+        
+        return pred
+
+
+    @override
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> None:
+        in_dir = Path(in_dir)
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        img_paths = list(Path(in_dir).glob("*.tif"))
+        for img_path in img_paths:
+            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.
+            pred = self.predict_proba(image)
+            pred = (pred * 255).astype(np.uint8)
+            pred_path = out_dir / img_path.name.replace(".tif", "_pred.tif")
+            cv2.imwrite(pred_path, pred)
+    
+    
     @override
     def save(self, path: str | Path) -> None:
         save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")

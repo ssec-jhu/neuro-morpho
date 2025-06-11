@@ -9,6 +9,14 @@ ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 
 class BaseModel:
     """Base class for all models to implement"""
+    
+    def tile(self, out_dir: str | Path) -> None:
+        """Tile the raw images and labels to the size T x T.
+
+        Args:
+            out_dir (str|Path): The path to save the tiled images
+        """
+        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="tile"))
 
     def fit(self, data_dir: str | Path) -> "BaseModel":
         """Fit the model to the data.
@@ -22,7 +30,7 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> np.ndarray:
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> None:
         """Predict the output for all images in the given directory.
 
         Args:
