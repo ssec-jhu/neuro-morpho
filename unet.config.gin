@@ -16,7 +16,7 @@ IN_SIZE = (64, 64)  # Size of the input images
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
 CometLogger.disabled = False
-
+CometLogger.api_key = "6lMXaAqScs0lukP8xk5ZsgYpX"
 
 
 torch.optim.Adam.lr = 0.001
@@ -94,15 +94,16 @@ CombinedLoss.losses = (
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
+# ChannelAttention.ratio = 2
 ChannelAttention.ratio = 16
 
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
-# UNet.encoder_channels = [2, 4, 8, 16, 32]
-# UNet.decoder_channels = [16, 8, 4, 2]
+# UNet.encoder_channels = [4, 8, 16, 32, 64]
+# UNet.decoder_channels = [32, 16, 8, 4]
 UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
-UNet.device = "cuda"
+# UNet.device = "cuda"
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
@@ -136,14 +137,30 @@ skeleton_analysis.stat_fns = [
 
 
 
-run.model = @UNet()
-run.training_x_dir = "data/processed/train/imgs"
-run.training_y_dir = "data/processed/train/lbls"
-run.testing_x_dir = "data/processed/test/imgs"
-run.testing_y_dir = "data/processed/test/lbls"
-run.model_save_dir = "models"
-run.model_out_y_dir = "data/output"
-run.model_stats_output_dir = "data/stats/model"
-run.labled_stats_outpur_dir = "data/stats/label"
-run.report_output_dir = "data/report"
-run.logger = @CometLogger()
+run_training.model = @UNet()
+run_training.training_x_dir = "data/processed/train/imgs"
+run_training.training_y_dir = "data/processed/train/lbls"
+run_training.testing_x_dir = "data/processed/test/imgs"
+run_training.testing_y_dir = "data/processed/test/lbls"
+run_training.model_save_dir = "models"
+run_training.model_out_y_dir = "data/output"
+run_training.model_stats_output_dir = "data/stats/model"
+run_training.labled_stats_outpur_dir = "data/stats/label"
+run_training.report_output_dir = "data/report"
+run_training.tile_size = 512
+run_training.tile_assembly = 'nn'
+run_training.logger = @CometLogger()
+
+run_testing.model = @UNet()
+run_testing.training_x_dir = "data/processed/train/imgs"
+run_testing.training_y_dir = "data/processed/train/lbls"
+run_testing.testing_x_dir = "data/processed/test/imgs"
+run_testing.testing_y_dir = "data/processed/test/lbls"
+run_testing.model_save_dir = "models"
+run_testing.model_out_y_dir = "data/output"
+run_testing.model_stats_output_dir = "data/stats/model"
+run_testing.labled_stats_outpur_dir = "data/stats/label"
+run_testing.report_output_dir = "data/report"
+run_testing.tile_size = 512
+run_testing.tile_assembly = 'nn'
+run_testing.logger = @CometLogger()
