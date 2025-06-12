@@ -5,17 +5,6 @@ import torchvision.transforms.v2
 
 from neuro_morpho import run
 
-# Register constants (only if they’re not already defined)
-try:
-    gin.constant("train_flag", False)
-except ValueError:
-    pass
-
-try:
-    gin.constant("test_flag", True)
-except ValueError:
-    pass
-
 
 def register_torch_transforms():
     """Register torch transforms to gin."""
@@ -35,13 +24,7 @@ def main(config: str = "unet.config.gin") -> None:
     """
     register_torch_transforms()
     gin.parse_config_file(config)
-    # Query constants
-    train = gin.query_parameter("train_flag")
-    test = gin.query_parameter("test_flag")
-    if train:
-        run.train()
-    if test:
-        run.test()
+    run.run()
 
 
 if __name__ == "__main__":

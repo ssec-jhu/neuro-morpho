@@ -136,31 +136,19 @@ skeleton_analysis.stat_fns = [
     ("Total Length", @calculate_total_length),
 ]
 
-train_flag = False
-test_flag = True
 
-train.model = @UNet()
-train.training_x_dir = "data/processed/train/imgs"
-train.training_y_dir = "data/processed/train/lbls"
-train.testing_x_dir = "data/processed/test/imgs"
-train.testing_y_dir = "data/processed/test/lbls"
-train.model_save_dir = "models"
-train.model_out_y_dir = "data/output"
-train.model_stats_output_dir = "data/stats/model"
-train.labled_stats_outpur_dir = "data/stats/label"
-train.report_output_dir = "data/report"
-train.logger = @CometLogger()
-
-test.model = @UNet()
-test.training_x_dir = "data/processed/train/imgs"
-test.training_y_dir = "data/processed/train/lbls"
-test.testing_x_dir = "data/processed/test/imgs"
-test.testing_y_dir = "data/processed/test/lbls"
-test.model_save_dir = "models"
-test.model_out_y_dir = "data/output"
-test.model_stats_output_dir = "data/stats/model"
-test.labled_stats_outpur_dir = "data/stats/label"
-test.report_output_dir = "data/report"
-test.logger = @CometLogger()
-test.tile_size = 512
-test.tile_assembly = 'nn'
+run.train = False
+run.test = True
+run.model = @UNet()
+run.training_x_dir = "data/processed/train/imgs"
+run.training_y_dir = "data/processed/train/lbls"
+run.testing_x_dir = "data/processed/test/imgs"
+run.testing_y_dir = "data/processed/test/lbls"
+run.model_save_dir = "models"
+run.model_out_y_dir = "data/output"
+run.model_stats_output_dir = "data/stats/model"
+run.labled_stats_outpur_dir = "data/stats/label"
+run.report_output_dir = "data/report"
+run.logger = @CometLogger()
+run.tile_size = 512
+run.tile_assembly = 'nn'

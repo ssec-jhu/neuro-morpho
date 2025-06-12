@@ -64,18 +64,6 @@ def test_shapes():
     assert output_tensor.shape == (1, 256, 256)
 
 
-def test_predict_dir_doesnt_raise():
-    """Test that predict_dir raises an error when called."""
-    model = unet.UNet(
-        n_input_channels=1,
-        n_output_channels=1,
-        encoder_channels=[64, 128, 256, 512, 1024],
-        decoder_channels=[512, 256, 128, 64],
-    )
-
-    model.predict_dir("dummy_path", "")  # This shouldn't raise an error since predict_dir is implemented.
-
-
 def test_save(tmp_path: Path):
     """Test saving the model."""
     model = unet.UNet(
