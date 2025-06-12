@@ -1,4 +1,5 @@
 import gin.torch
+import gin.torch.external_configurables
 
 import neuro_morpho.model.unet
 import neuro_morpho.reports.generator
