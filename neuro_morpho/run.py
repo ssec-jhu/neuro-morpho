@@ -57,7 +57,7 @@ def run(
     report_output_dir = Path(report_output_dir)
     tile_size = tile_size
     tile_assembly = tile_assembly
-    
+
     if train:
         if logger is not None:
             if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
@@ -88,7 +88,7 @@ def run(
     if test:
         model.load(model_save_dir / "27b55b978fea46ceb9a072eca9284c7e.pt")
         model.predict_dir(testing_x_dir, model_out_y_dir)
-        
+
     generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
     generator.generate_statistics(testing_y_dir, labled_stats_outpur_dir)
     generator.generate_report(
