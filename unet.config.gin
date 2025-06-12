@@ -1,4 +1,5 @@
 import gin.torch
+import gin.torch.external_configurables
 
 import neuro_morpho.model.unet
 import neuro_morpho.reports.generator
@@ -135,32 +136,31 @@ skeleton_analysis.stat_fns = [
     ("Total Length", @calculate_total_length),
 ]
 
+train_flag = False
+test_flag = True
 
+train.model = @UNet()
+train.training_x_dir = "data/processed/train/imgs"
+train.training_y_dir = "data/processed/train/lbls"
+train.testing_x_dir = "data/processed/test/imgs"
+train.testing_y_dir = "data/processed/test/lbls"
+train.model_save_dir = "models"
+train.model_out_y_dir = "data/output"
+train.model_stats_output_dir = "data/stats/model"
+train.labled_stats_outpur_dir = "data/stats/label"
+train.report_output_dir = "data/report"
+train.logger = @CometLogger()
 
-run_training.model = @UNet()
-run_training.training_x_dir = "data/processed/train/imgs"
-run_training.training_y_dir = "data/processed/train/lbls"
-run_training.testing_x_dir = "data/processed/test/imgs"
-run_training.testing_y_dir = "data/processed/test/lbls"
-run_training.model_save_dir = "models"
-run_training.model_out_y_dir = "data/output"
-run_training.model_stats_output_dir = "data/stats/model"
-run_training.labled_stats_outpur_dir = "data/stats/label"
-run_training.report_output_dir = "data/report"
-run_training.tile_size = 512
-run_training.tile_assembly = 'nn'
-run_training.logger = @CometLogger()
-
-run_testing.model = @UNet()
-run_testing.training_x_dir = "data/processed/train/imgs"
-run_testing.training_y_dir = "data/processed/train/lbls"
-run_testing.testing_x_dir = "data/processed/test/imgs"
-run_testing.testing_y_dir = "data/processed/test/lbls"
-run_testing.model_save_dir = "models"
-run_testing.model_out_y_dir = "data/output"
-run_testing.model_stats_output_dir = "data/stats/model"
-run_testing.labled_stats_outpur_dir = "data/stats/label"
-run_testing.report_output_dir = "data/report"
-run_testing.tile_size = 512
-run_testing.tile_assembly = 'nn'
-run_testing.logger = @CometLogger()
+test.model = @UNet()
+test.training_x_dir = "data/processed/train/imgs"
+test.training_y_dir = "data/processed/train/lbls"
+test.testing_x_dir = "data/processed/test/imgs"
+test.testing_y_dir = "data/processed/test/lbls"
+test.model_save_dir = "models"
+test.model_out_y_dir = "data/output"
+test.model_stats_output_dir = "data/stats/model"
+test.labled_stats_outpur_dir = "data/stats/label"
+test.report_output_dir = "data/report"
+test.logger = @CometLogger()
+test.tile_size = 512
+test.tile_assembly = 'nn'

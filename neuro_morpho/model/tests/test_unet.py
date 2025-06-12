@@ -43,9 +43,8 @@ def test_detach_and_move():
 def test_shapes():
     """Simple end-to-end test for the UNet model."""
 
-    # Create a dummy input tensor with the shape (batch_size, channels, height, width)
-    input_tensor = torch.randn(1, 1, 256, 256)
-    input_tensor = np.random.rand(1, 1, 256, 256).astype(np.float32)
+    # Create a dummy input tensor with the shape (batch_size, height, width, channels)
+    input_tensor = np.random.rand(1, 256, 256, 1).astype(np.float32)
 
     # Initialize the UNet model
     model = unet.UNet(
@@ -53,13 +52,19 @@ def test_shapes():
         n_output_channels=1,
         encoder_channels=[64, 128, 256, 512, 1024],
         decoder_channels=[512, 256, 128, 64],
+        device="cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu",
     )
+    model.tile_size = 128
+    model.tile_assembly = "max"
+    model.x_coord = np.array([0, 128])
+    model.y_coord = np.array([0, 128])
+    model.nearest_map = None
 
     output_tensor = model.predict_proba(input_tensor)
     assert output_tensor.shape == (1, 256, 256)
 
 
-def test_predict_dir_raises():
+def test_predict_dir_doesnt_raise():
     """Test that predict_dir raises an error when called."""
     model = unet.UNet(
         n_input_channels=1,
@@ -68,8 +73,7 @@ def test_predict_dir_raises():
         decoder_channels=[512, 256, 128, 64],
     )
 
-    with pytest.raises(NotImplementedError):
-        model.predict_dir("dummy_path", "")  # This should raise an error since predict_dir is not implemented.
+    model.predict_dir("dummy_path", "")  # This shouldn't raise an error since predict_dir is implemented.
 
 
 def test_save(tmp_path: Path):
