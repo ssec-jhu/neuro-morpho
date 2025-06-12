@@ -85,6 +85,7 @@ def run(
 
         model.save(model_save_dir)
 
+
     if infer:
         model.load(model_save_dir / "27b55b978fea46ceb9a072eca9284c7e.pt")
         model.predict_dir(testing_x_dir, model_out_y_dir)
