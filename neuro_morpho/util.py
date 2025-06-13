@@ -4,8 +4,20 @@ import os
 from pathlib import Path
 
 import numpy as np
+import torch
 
 from . import __project__
+
+
+def get_device():
+    # Optional: detect CI environment
+    is_ci = os.getenv("CI") == "true"
+
+    if not is_ci and torch.backends.mps.is_available():
+        return "mps"
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
 
 
 def find_package_location(package=__project__):
