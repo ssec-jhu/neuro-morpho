@@ -41,7 +41,7 @@ from typing_extensions import override
 import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
-from neuro_morpho.util import TilesMixin
+from neuro_morpho.util import TilesMixin, get_device
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -73,7 +73,7 @@ class UNet(base.BaseModel, TilesMixin):
         n_output_channels: int = 1,
         encoder_channels: list[int] = [64, 128, 256, 512, 1024],
         decoder_channels: list[int] = [512, 256, 128, 64],
-        device: str = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu",
+        device: str = get_device(),
     ):
         super(UNet, self).__init__()
         self.model = UNetModule(
