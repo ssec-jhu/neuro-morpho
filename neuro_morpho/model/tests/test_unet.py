@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from neuro_morpho.model import unet
+from neuro_morpho.util import get_device
 
 
 @pytest.mark.parametrize(
@@ -52,7 +53,7 @@ def test_shapes():
         n_output_channels=1,
         encoder_channels=[64, 128, 256, 512, 1024],
         decoder_channels=[512, 256, 128, 64],
-        device="cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu",
+        device=get_device(),
     )
     model.tile_size = 128
     model.tile_assembly = "max"
