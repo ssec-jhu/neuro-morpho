@@ -35,7 +35,7 @@ def run(
     report_output_dir: str | Path,
     logger: log.Logger = None,
     train: bool = False,
-    test: bool = False,
+    infer: bool = False,
     tile_size: int = 512,
     tile_assembly: str = "nn",
 ):
@@ -85,7 +85,7 @@ def run(
 
         model.save(model_save_dir)
 
-    if test:
+    if infer:
         model.load(model_save_dir / "27b55b978fea46ceb9a072eca9284c7e.pt")
         model.predict_dir(testing_x_dir, model_out_y_dir)
 
