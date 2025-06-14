@@ -137,7 +137,7 @@ skeleton_analysis.stat_fns = [
 
 
 run.train = False
-run.test = True
+run.infer = True
 run.model = @UNet()
 run.training_x_dir = "data/processed/train/imgs"
 run.training_y_dir = "data/processed/train/lbls"
