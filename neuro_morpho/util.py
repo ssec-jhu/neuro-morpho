@@ -41,37 +41,37 @@ class TilesMixin:
         self.tile_assembly = tile_assembly
 
         n_x = math.ceil(image_size[0] / self.tile_size)
-        X_coord = np.zeros(n_x, dtype=int)
+        x_coords = np.zeros(n_x, dtype=int)
         gap_x = math.floor((self.tile_size * n_x - image_size[0]) / (n_x - 1))
         gap_x_plus_one__amount = self.tile_size * n_x - image_size[0] - gap_x * (n_x - 1)
         for i in range(1, n_x):
             if i <= gap_x_plus_one__amount:
-                X_coord[i] = int(X_coord[i - 1] + self.tile_size - (gap_x + 1))
+                x_coords[i] = int(x_coords[i - 1] + self.tile_size - (gap_x + 1))
             else:
-                X_coord[i] = int(X_coord[i - 1] + self.tile_size - gap_x)
+                x_coords[i] = int(x_coords[i - 1] + self.tile_size - gap_x)
         n_y = math.ceil(image_size[1] / self.tile_size)
-        Y_coord = np.zeros(n_y, dtype=int)
+        y_coords = np.zeros(n_y, dtype=int)
         gap_y = math.floor((self.tile_size * n_y - image_size[1]) / (n_y - 1))
         gap_y_plus_one__amount = self.tile_size * n_y - image_size[1] - gap_y * (n_y - 1)
         for i in range(1, n_y):
             if i <= gap_y_plus_one__amount:
-                Y_coord[i] = int(Y_coord[i - 1] + self.tile_size - (gap_y + 1))
+                y_coords[i] = int(y_coords[i - 1] + self.tile_size - (gap_y + 1))
             else:
-                Y_coord[i] = int(Y_coord[i - 1] + self.tile_size - gap_y)
+                y_coords[i] = int(y_coords[i - 1] + self.tile_size - gap_y)
 
         if self.tile_assembly == "nn":  # prepare nearest neighbor map
-            X_Coord = np.tile(X_coord, n_y) + (self.tile_size - 1) / 2
-            Y_Coord = np.repeat(Y_coord, n_x) + (self.tile_size - 1) / 2
+            x_coords = np.tile(x_coords, n_y) + (self.tile_size - 1) / 2
+            y_coords = np.repeat(y_coords, n_x) + (self.tile_size - 1) / 2
             y_grid, x_grid = np.meshgrid(np.arange(image_size[0]), np.arange(image_size[1]), indexing="ij")
             y_grid = y_grid[..., np.newaxis]
             x_grid = x_grid[..., np.newaxis]
-            distances = np.sqrt((x_grid - X_Coord) ** 2 + (y_grid - Y_Coord) ** 2)
+            distances = np.sqrt((x_grid - x_coords) ** 2 + (y_grid - y_coords) ** 2)
             nearest_map = np.argmin(distances, axis=-1)
         else:
             nearest_map = None
 
-        self.x_coord = X_coord
-        self.y_coord = Y_coord
+        self.x_coords = x_coords
+        self.y_coords = y_coords
         self.nearest_map = nearest_map
 
     def tile_image(self, x: np.ndarray) -> np.ndarray:
@@ -83,13 +83,13 @@ class TilesMixin:
             np.ndarray: The stack of tiles collected in raster order
         """
         tiles = list()
-        n_y = len(self.y_coord)
-        n_x = len(self.x_coord)
+        n_y = len(self.y_coords)
+        n_x = len(self.x_coords)
         for i in range(n_y):
             for j in range(n_x):
                 tile = x[
-                    self.y_coord[i] : (self.y_coord[i] + self.tile_size),
-                    self.x_coord[j] : (self.x_coord[j] + self.tile_size),
+                    self.y_coords[i] : (self.y_coords[i] + self.tile_size),
+                    self.x_coords[j] : (self.x_coords[j] + self.tile_size),
                 ]
                 tiles.append(tile)
 
