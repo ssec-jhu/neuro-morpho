@@ -172,7 +172,18 @@ cython_debug/
 *.pt
 
 # Image files
-*.png, *.tif, *.pgm, *.jpg, *.jpeg, *.gif, *.bmp, *.webp
+*.png
+*.tif
+*.pgm
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
 
 # Report files
-*.xlsx, *.csv
+*.xlsx
+*.csv
+
+# JSON files
+*.json
