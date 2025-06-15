@@ -57,8 +57,8 @@ def test_shapes():
     )
     model.tile_size = 128
     model.tile_assembly = "max"
-    model.x_coord = np.array([0, 128])
-    model.y_coord = np.array([0, 128])
+    model.x_coords = np.array([0, 128])
+    model.y_coords = np.array([0, 128])
     model.nearest_map = None
 
     output_tensor = model.predict_proba(input_tensor)

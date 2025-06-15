@@ -208,8 +208,8 @@ class UNet(base.BaseModel, TilesMixin):
         image_tiles = self.tile_image(x)
         image_tiles = np.squeeze(image_tiles, axis=-1)
 
-        n_y = len(self.y_coord)
-        n_x = len(self.x_coord)
+        n_y = len(self.y_coords)
+        n_x = len(self.x_coords)
         pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
         for i in range(n_y):
             for j in range(n_x):
@@ -231,8 +231,8 @@ class UNet(base.BaseModel, TilesMixin):
                 tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
                 pred_array[
                     i * n_x + j,
-                    self.y_coord[i] : (self.y_coord[i] + self.tile_size),
-                    self.x_coord[j] : (self.x_coord[j] + self.tile_size),
+                    self.y_coords[i] : (self.y_coords[i] + self.tile_size),
+                    self.x_coords[j] : (self.x_coords[j] + self.tile_size),
                 ] = tile_pred
 
         # Averaging the result
@@ -267,8 +267,8 @@ class UNet(base.BaseModel, TilesMixin):
             # Convert to shape (1, image.shape[0], image.shape[1], 1) => 1 sample, 1 channel
             x = image[np.newaxis, :, :, np.newaxis]
             pred = self.predict_proba(x)
-            pred = (pred * 255).astype(np.uint8)
-            pred_path = out_dir / img_path.name.replace(".tif", "_pred.tif")
+            pred = (np.squeeze(pred) * 255).astype(np.uint8)
+            pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, pred)
 
     @override
