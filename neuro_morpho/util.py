@@ -15,7 +15,7 @@ def get_device():
 
     if not is_ci and torch.backends.mps.is_available():
         return "mps"
-    if torch.cuda.is_available():
+    if not is_ci and torch.cuda.is_available():
         return "cuda"
     return "cpu"
 
@@ -35,11 +35,10 @@ class TilesMixin:
         """Initialize the mixin.
         Args:
             tile_size (int, optional): The size of the tiles. Defaults to 512.
-            image_size (tuple[int, int], optional): The size of the images. Defaults to (3334, 3334).   
+            image_size (tuple[int, int], optional): The size of the images. Defaults to (3334, 3334).
         """
         self.tile_size = tile_size
         self.tile_assembly = tile_assembly
-
 
         n_x = math.ceil(image_size[0] / self.tile_size)
         X_coord = np.zeros(n_x, dtype=int)
