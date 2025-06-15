@@ -31,7 +31,7 @@ def run(
     model_save_dir: str | Path,
     model_out_y_dir: str | Path,
     model_stats_output_dir: str | Path,
-    labled_stats_outpur_dir: str | Path,
+    labeled_stats_output_dir: str | Path,
     report_output_dir: str | Path,
     logger: log.Logger = None,
     train: bool = False,
@@ -53,7 +53,7 @@ def run(
     model_save_dir = Path(model_save_dir)
     model_out_y_dir = Path(model_out_y_dir)
     model_stats_output_dir = Path(model_stats_output_dir)
-    labled_stats_outpur_dir = Path(labled_stats_outpur_dir)
+    labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
     tile_size = tile_size
     tile_assembly = tile_assembly
@@ -85,15 +85,14 @@ def run(
 
         model.save(model_save_dir)
 
-
     if infer:
         model.load(model_save_dir / "27b55b978fea46ceb9a072eca9284c7e.pt")
         model.predict_dir(testing_x_dir, model_out_y_dir)
 
     generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
-    generator.generate_statistics(testing_y_dir, labled_stats_outpur_dir)
+    generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
     generator.generate_report(
         model_stats_output_dir,
-        labled_stats_outpur_dir,
+        labeled_stats_output_dir,
         report_output_dir,
     )
