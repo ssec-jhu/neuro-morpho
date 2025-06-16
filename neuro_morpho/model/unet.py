@@ -240,7 +240,8 @@ class UNet(base.BaseModel, TilesMixin):
         non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
         non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
         if self.tile_assembly == "mean":
-            non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
+            non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
+            # non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
             pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
         elif self.tile_assembly == "max":
             pred = np.max(pred_array * non_zero_mask, axis=0)
