@@ -55,11 +55,6 @@ def test_shapes():
         decoder_channels=[512, 256, 128, 64],
         device=get_device(),
     )
-    model.tile_size = 128
-    model.tile_assembly = "max"
-    model.x_coords = np.array([0, 128])
-    model.y_coords = np.array([0, 128])
-    model.nearest_map = None
 
     output_tensor = model.predict_proba(input_tensor)
     assert output_tensor.shape == (1, 256, 256)
