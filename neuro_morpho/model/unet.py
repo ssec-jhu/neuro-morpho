@@ -41,7 +41,8 @@ from typing_extensions import override
 import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
-from neuro_morpho.util import TilesMixin, get_device
+from neuro_morpho.model.tiler import Tiler
+from neuro_morpho.util import get_device
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -66,7 +67,7 @@ def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
 
 
 @gin.register
-class UNet(base.BaseModel, TilesMixin):
+class UNet(base.BaseModel):
     def __init__(
         self,
         n_input_channels: int = 1,
@@ -205,11 +206,13 @@ class UNet(base.BaseModel, TilesMixin):
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
         x = np.squeeze(x)
         image_size = x.shape
-        image_tiles = self.tile_image(x)
+
+        tiler = Tiler(x.shape, 512, "nn")
+        image_tiles = tiler.tile_image(x)
         image_tiles = np.squeeze(image_tiles, axis=-1)
 
-        n_y = len(self.y_coords)
-        n_x = len(self.x_coords)
+        n_y = len(tiler.y_coords)
+        n_x = len(tiler.x_coords)
         pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
         for i in range(n_y):
             for j in range(n_x):
@@ -231,24 +234,24 @@ class UNet(base.BaseModel, TilesMixin):
                 tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
                 pred_array[
                     i * n_x + j,
-                    self.y_coords[i] : (self.y_coords[i] + self.tile_size),
-                    self.x_coords[j] : (self.x_coords[j] + self.tile_size),
+                    tiler.y_coords[i] : (tiler.y_coords[i] + tiler.tile_size),
+                    tiler.x_coords[j] : (tiler.x_coords[j] + tiler.tile_size),
                 ] = tile_pred
 
         # Averaging the result
         non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
         non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
         non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
-        if self.tile_assembly == "mean":
+        if tiler.tile_assembly == "mean":
             non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
             # non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
             pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
-        elif self.tile_assembly == "max":
+        elif tiler.tile_assembly == "max":
             pred = np.max(pred_array * non_zero_mask, axis=0)
-        elif self.tile_assembly == "nn":  # nearest neighbor
+        elif tiler.tile_assembly == "nn":  # nearest neighbor
             pred = np.zeros(image_size, dtype=np.float32)
             for idx in range(n_y * n_x):
-                pred[self.nearest_map == idx] = pred_array[idx, self.nearest_map == idx]
+                pred[tiler.nearest_map == idx] = pred_array[idx, tiler.nearest_map == idx]
         else:
             pred = np.zeros(image_size, dtype=np.float32)
             raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
