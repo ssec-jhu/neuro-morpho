@@ -22,7 +22,7 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> None:
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path, tile_size: int, tile_assembly: str) -> None:
         """Predict the output for all images in the given directory.
 
         Args:
@@ -43,7 +43,7 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict"))
 
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+    def predict_proba(self, x: np.ndarray, tile_size: int, tile_assembly: str) -> np.ndarray:
         """Predict a soft version of the output given the input x,
 
         Args:

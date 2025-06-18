@@ -55,9 +55,10 @@ def test_shapes():
         decoder_channels=[512, 256, 128, 64],
         device=get_device(),
     )
-
-    output_tensor = model.predict_proba(input_tensor)
-    assert output_tensor.shape == (1, 256, 256)
+    tile_size = 128
+    tile_assembly = "mean"
+    output_tensor = model.predict_proba(input_tensor, tile_size, tile_assembly)
+    assert output_tensor.shape == (1, 256, 256, 1)
 
 
 def test_save(tmp_path: Path):

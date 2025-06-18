@@ -74,6 +74,8 @@ class SimpleBaseLine(base.BaseModel):
         self,
         in_dir: str | Path,
         out_dir: str | Path,
+        tile_size: int = 512,
+        tile_assembly: str = "mean",
     ) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
