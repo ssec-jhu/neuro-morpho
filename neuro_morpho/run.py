@@ -24,6 +24,7 @@ def config_str_to_dict(config_str: str) -> dict:
 @gin.configurable
 def run(
     model: base.BaseModel,
+    model_file: str,
     training_x_dir: str | Path,
     training_y_dir: str | Path,
     testing_x_dir: str | Path,
@@ -55,8 +56,8 @@ def run(
     model_stats_output_dir = Path(model_stats_output_dir)
     labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
-    tile_size = tile_size
-    tile_assembly = tile_assembly
+    # tile_size = tile_size
+    # tile_assembly = tile_assembly
 
     if train:
         if logger is not None:
@@ -85,14 +86,19 @@ def run(
 
         model.save(model_save_dir)
 
-    if infer:
-        model.load(model_save_dir / "27b55b978fea46ceb9a072eca9284c7e.pt")
-        model.predict_dir(testing_x_dir, model_out_y_dir)
+        generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
+        generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
+        generator.generate_report(
+            model_stats_output_dir,
+            labeled_stats_output_dir,
+            report_output_dir,
+        )
 
-    generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
-    generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
-    generator.generate_report(
-        model_stats_output_dir,
-        labeled_stats_output_dir,
-        report_output_dir,
-    )
+    if infer:
+        if model is None:
+            if model_file is None:
+                raise FileNotFoundError("Model file is not provided.")
+            model.load(model_save_dir / model_file)
+            if not model.exists():
+                raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
+        model.predict_dir(testing_x_dir, model_out_y_dir, tile_size, tile_assembly)

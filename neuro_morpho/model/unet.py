@@ -203,77 +203,84 @@ class UNet(base.BaseModel):
         return self
 
     @override
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        x = np.squeeze(x)
-        image_size = x.shape
-
-        tiler = Tiler(x.shape, 512, "nn")
-        image_tiles = tiler.tile_image(x)
-        image_tiles = np.squeeze(image_tiles, axis=-1)
-
+    def predict_proba(self, x: np.ndarray, tile_size: int, tile_assembly: str) -> np.ndarray:
+        x = np.squeeze(x, axis=-1)  # (batch, height, width)
+        image_size = x.shape[1:]  # (height, width)
+        tiler = Tiler(image_size, tile_size, tile_assembly)
         n_y = len(tiler.y_coords)
         n_x = len(tiler.x_coords)
-        pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
-        for i in range(n_y):
-            for j in range(n_x):
-                tile = image_tiles[i * n_x + j, :, :]
-                # Start the inferring process
-                tile_flip_0 = tile[::-1, ...]  # Vertical flip
-                tile_flip_1 = tile[:, ::-1, ...]  # Horizontal flip
-                tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
-                tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
-                tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
-                with torch.no_grad():
-                    pred, _, _, _ = self.model(tile_torch)
-                    pred = torch.sigmoid(pred)
-                    pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
-                pred_ori = pred_ori.cpu().numpy()
-                pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
-                pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
-                pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
-                tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
-                pred_array[
-                    i * n_x + j,
-                    tiler.y_coords[i] : (tiler.y_coords[i] + tiler.tile_size),
-                    tiler.x_coords[j] : (tiler.x_coords[j] + tiler.tile_size),
-                ] = tile_pred
 
-        # Averaging the result
-        non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
-        non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
-        non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
-        if tiler.tile_assembly == "mean":
-            non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
-            # non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
-            pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
-        elif tiler.tile_assembly == "max":
-            pred = np.max(pred_array * non_zero_mask, axis=0)
-        elif tiler.tile_assembly == "nn":  # nearest neighbor
-            pred = np.zeros(image_size, dtype=np.float32)
-            for idx in range(n_y * n_x):
-                pred[tiler.nearest_map == idx] = pred_array[idx, tiler.nearest_map == idx]
-        else:
-            pred = np.zeros(image_size, dtype=np.float32)
-            raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
+        soft_prediction = list()
+        for cntr in range(x.shape[0]):
+            image_tiles = tiler.tile_image(x[cntr, :, :])
+            image_tiles = np.squeeze(image_tiles, axis=-1)
+            pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+            for i in range(n_y):
+                for j in range(n_x):
+                    tile = image_tiles[i * n_x + j, :, :]
+                    # Start the inferring process
+                    tile_flip_0 = tile[::-1, ...]  # Vertical flip
+                    tile_flip_1 = tile[:, ::-1, ...]  # Horizontal flip
+                    tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
+                    tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
+                    tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
+                    with torch.no_grad():
+                        pred, _, _, _ = self.model(tile_torch)
+                        pred = torch.sigmoid(pred)
+                        pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
+                    pred_ori = pred_ori.cpu().numpy()
+                    pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
+                    pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
+                    pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
+                    tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
+                    pred_array[
+                        i * n_x + j,
+                        tiler.y_coords[i] : (tiler.y_coords[i] + tiler.tile_size),
+                        tiler.x_coords[j] : (tiler.x_coords[j] + tiler.tile_size),
+                    ] = tile_pred
 
-        return pred[np.newaxis, :, :]
+            # Averaging the result
+            non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
+            non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
+            non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
+            if tiler.tile_assembly == "mean":
+                non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
+                non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
+                pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
+            elif tiler.tile_assembly == "max":
+                pred = np.max(pred_array * non_zero_mask, axis=0)
+            elif tiler.tile_assembly == "nn":  # nearest neighbor
+                pred = np.zeros(image_size, dtype=np.float32)
+                for idx in range(n_y * n_x):
+                    pred[tiler.nearest_map == idx] = pred_array[idx, tiler.nearest_map == idx]
+            else:
+                pred = np.zeros(image_size, dtype=np.float32)
+                raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
+            soft_prediction.append(pred)
+
+        soft_prediction = np.stack(soft_prediction, axis=0)
+        return soft_prediction[:, :, :, np.newaxis]  # (batch, height, width, 1)
 
     @override
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> None:
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path, tile_size: int, tile_assembly: str) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        img_paths = list(Path(in_dir).glob("*.tif"))
+        img_paths = sorted(list(Path(in_dir).glob("*.tif")) + list(Path(in_dir).glob("*.pgm")))
+        x = list()
         for img_path in img_paths:
             img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
             image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            # Convert to shape (1, image.shape[0], image.shape[1], 1) => 1 sample, 1 channel
-            x = image[np.newaxis, :, :, np.newaxis]
-            pred = self.predict_proba(x)
-            pred = (np.squeeze(pred) * 255).astype(np.uint8)
+            x.append(image)
+
+        # Convert to shape (batch, image.shape[0], image.shape[1], 1) => 1 sample, 1 channel
+        x = np.stack(x)[:, :, :, np.newaxis]
+        pred = self.predict_proba(x, tile_size, tile_assembly)
+        pred = (np.squeeze(pred, axis=-1) * 255).astype(np.uint8)
+        for cntr, img_path in enumerate(img_paths):
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
-            cv2.imwrite(pred_path, pred)
+            cv2.imwrite(pred_path, pred[cntr, :, :])
 
     @override
     def save(self, path: str | Path) -> None:
