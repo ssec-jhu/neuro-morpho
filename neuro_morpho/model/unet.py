@@ -72,7 +72,7 @@ class UNet(base.BaseModel):
         n_output_channels: int = 1,
         encoder_channels: list[int] = [64, 128, 256, 512, 1024],
         decoder_channels: list[int] = [512, 256, 128, 64],
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        device: str = None,
     ):
         super(UNet, self).__init__()
         self.model = UNetModule(
@@ -82,7 +82,7 @@ class UNet(base.BaseModel):
             decoder_channels=decoder_channels,
         ).to(device)
         self.cast_fn = functools.partial(cast_and_move, device=device)
-        self.device = device
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.exp_id: str = None
 
     @override
