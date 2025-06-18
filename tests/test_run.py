@@ -37,7 +37,7 @@ def test_run_infer():
 
     # Create a dummy input image with the shape (batch_size, height, width, channels)
     input_tensor = np.random.rand(1, 256, 256, 1).astype(np.float32)
-    run.testing_x_dir.mkdir(parents=True, exist_ok=True)
+    Path(run.testing_x_dir).mkdir(parents=True, exist_ok=True)
     cv2.imwrite(run.testing_x_dir + "test_img.tif", (input_tensor[0, :, :, 0] * 255).astype(np.uint8))
 
     run.run(
