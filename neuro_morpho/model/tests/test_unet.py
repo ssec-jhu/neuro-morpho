@@ -45,7 +45,7 @@ def test_shapes():
     """Simple end-to-end test for the UNet model."""
 
     # Create a dummy input tensor with the shape (batch_size, height, width, channels)
-    input_tensor = np.random.rand(1, 256, 256, 1).astype(np.float32)
+    input_tensor = np.random.rand(1, 1, 256, 256).astype(np.float32)
 
     # Initialize the UNet model
     model = unet.UNet(
@@ -58,7 +58,7 @@ def test_shapes():
     tile_size = 128
     tile_assembly = "mean"
     output_tensor = model.predict_proba(input_tensor, tile_size, tile_assembly)
-    assert output_tensor.shape == (1, 256, 256, 1)
+    assert output_tensor.shape == (1, 1, 256, 256)
 
 
 def test_save(tmp_path: Path):
