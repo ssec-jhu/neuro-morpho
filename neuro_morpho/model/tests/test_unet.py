@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from neuro_morpho.model import unet
+from neuro_morpho.util import get_device
 
 
 @pytest.mark.parametrize(
@@ -43,8 +44,7 @@ def test_detach_and_move():
 def test_shapes():
     """Simple end-to-end test for the UNet model."""
 
-    # Create a dummy input tensor with the shape (batch_size, channels, height, width)
-    input_tensor = torch.randn(1, 1, 256, 256)
+    # Create a dummy input tensor with the shape (batch_size, height, width, channels)
     input_tensor = np.random.rand(1, 1, 256, 256).astype(np.float32)
 
     # Initialize the UNet model
@@ -53,23 +53,12 @@ def test_shapes():
         n_output_channels=1,
         encoder_channels=[64, 128, 256, 512, 1024],
         decoder_channels=[512, 256, 128, 64],
+        device=get_device(),
     )
-
-    output_tensor = model.predict_proba(input_tensor)
-    assert output_tensor.shape == (1, 256, 256)
-
-
-def test_predict_dir_raises():
-    """Test that predict_dir raises an error when called."""
-    model = unet.UNet(
-        n_input_channels=1,
-        n_output_channels=1,
-        encoder_channels=[64, 128, 256, 512, 1024],
-        decoder_channels=[512, 256, 128, 64],
-    )
-
-    with pytest.raises(NotImplementedError):
-        model.predict_dir("dummy_path", "")  # This should raise an error since predict_dir is not implemented.
+    tile_size = 128
+    tile_assembly = "mean"
+    output_tensor = model.predict_proba(input_tensor, tile_size, tile_assembly)
+    assert output_tensor.shape == (1, 1, 256, 256)
 
 
 def test_save(tmp_path: Path):

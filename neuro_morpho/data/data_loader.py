@@ -26,8 +26,8 @@ class NeuroMorphoDataset(td.Dataset):
             data_dir (str|Path): Directory containing the data.
             transform (v2.Transform, optional): Transform to be applied to the data. Defaults to None.
         """
-        self.img_files = list(Path(x_dir).glob("*.pgm"))
-        self.lbl_files = list(Path(y_dir).glob("*.pgm"))
+        self.img_files = [f for ext in ("*.pgm", "*.tif") for f in Path(x_dir).glob(ext)]
+        self.lbl_files = [f for ext in ("*.pgm", "*.tif") for f in Path(y_dir).glob(ext)]
         self.img_files.sort()
         self.lbl_files.sort()
 

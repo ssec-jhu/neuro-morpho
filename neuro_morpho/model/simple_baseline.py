@@ -74,12 +74,15 @@ class SimpleBaseLine(base.BaseModel):
         self,
         in_dir: str | Path,
         out_dir: str | Path,
+        tile_size: int = 512,
+        tile_assembly: str = "mean",
     ) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        for in_file in tqdm(list(in_dir.glob("*.pgm")), desc="Predicting"):
+        in_files = [f for ext in ("*.pgm", "*.tif") for f in in_dir.glob(ext)]
+        for in_file in tqdm(in_files, desc="Predicting"):
             x = ski.io.imread(in_file)[np.newaxis, :, :, np.newaxis]
             y = self.predict(x)[0, :, :, 0]
             ski.io.imsave(

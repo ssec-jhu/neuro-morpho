@@ -3,7 +3,7 @@ from pathlib import Path
 import gin
 
 import neuro_morpho.logging.base as log
-import neuro_morpho.model.base as base
+from neuro_morpho.model import base
 from neuro_morpho.reports import generator
 
 
@@ -24,6 +24,7 @@ def config_str_to_dict(config_str: str) -> dict:
 @gin.configurable
 def run(
     model: base.BaseModel,
+    model_file: str,
     training_x_dir: str | Path,
     training_y_dir: str | Path,
     testing_x_dir: str | Path,
@@ -31,9 +32,13 @@ def run(
     model_save_dir: str | Path,
     model_out_y_dir: str | Path,
     model_stats_output_dir: str | Path,
-    labled_stats_outpur_dir: str | Path,
+    labeled_stats_output_dir: str | Path,
     report_output_dir: str | Path,
     logger: log.Logger = None,
+    train: bool = False,
+    infer: bool = False,
+    tile_size: int = 512,
+    tile_assembly: str = "nn",
 ):
     """Run the model on the data and save the results.
 
@@ -42,7 +47,6 @@ def run(
         data_dir (str|Path): The directory containing the data
         output_dir (str|Path): The directory to save the results
     """
-
     training_x_dir = Path(training_x_dir)
     training_y_dir = Path(training_y_dir)
     testing_x_dir = Path(testing_x_dir)
@@ -50,40 +54,51 @@ def run(
     model_save_dir = Path(model_save_dir)
     model_out_y_dir = Path(model_out_y_dir)
     model_stats_output_dir = Path(model_stats_output_dir)
-    labled_stats_outpur_dir = Path(labled_stats_outpur_dir)
+    labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
+    # tile_size = tile_size
+    # tile_assembly = tile_assembly
 
-    if logger is not None:
-        if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
-            logger.log_parameters(config)
+    if train:
+        if logger is not None:
+            if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
+                logger.log_parameters(config)
 
-        logger.log_code(
-            folder=Path(__file__).parent,
+            logger.log_code(
+                folder=Path(__file__).parent,
+            )
+
+            model.exp_id = logger.experiment.get_key()
+            model = model.fit(
+                training_x_dir,
+                training_y_dir,
+                testing_x_dir,
+                testing_y_dir,
+                logger=logger,
+            )
+        else:
+            model = model.fit(
+                training_x_dir,
+                training_y_dir,
+                testing_x_dir,
+                testing_y_dir,
+            )
+
+        model.save(model_save_dir)
+
+        generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
+        generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
+        generator.generate_report(
+            model_stats_output_dir,
+            labeled_stats_output_dir,
+            report_output_dir,
         )
 
-        model.exp_id = logger.experiment.get_key()
-        model = model.fit(
-            training_x_dir,
-            training_y_dir,
-            testing_x_dir,
-            testing_y_dir,
-            logger=logger,
-        )
-    else:
-        model = model.fit(
-            training_x_dir,
-            training_y_dir,
-            testing_x_dir,
-            testing_y_dir,
-        )
-
-    model.save(model_save_dir)
-
-    model.predict_dir(testing_x_dir, model_out_y_dir)
-    generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
-    generator.generate_statistics(testing_y_dir, labled_stats_outpur_dir)
-    generator.generate_report(
-        model_stats_output_dir,
-        labled_stats_outpur_dir,
-        report_output_dir,
-    )
+    if infer:
+        if model is None:
+            if model_file is None:
+                raise FileNotFoundError("Model file is not provided.")
+            model.load(model_save_dir / model_file)
+            if not model.exists():
+                raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
+        model.predict_dir(testing_x_dir, model_out_y_dir, tile_size, tile_assembly)
