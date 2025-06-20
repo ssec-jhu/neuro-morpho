@@ -24,6 +24,8 @@
 # SOFTWARE.
 import functools
 import itertools
+import warnings
+import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
@@ -100,7 +102,7 @@ class UNet(base.BaseModel):
             "log_every",
             "init_step",
             "model_id",
-            "model_dir",
+            "models_dir",
         ]
     )
     def fit(
@@ -118,30 +120,19 @@ class UNet(base.BaseModel):
         logger: base_logging.Logger = None,
         log_every: int = 10,
         init_step: int = 0,
-        model_id: str | None = None,
-        model_dir: str | Path | None = None,
+        model_id: str = uuid.uuid4(),
+        models_dir: str | Path = Path("models"),
         n_checkpoints: int = 5,  # Number of checkpoints to keep
     ) -> base.BaseModel:
-        if model_id and model_dir:
-            model_path = Path(model_dir) / model_id
-            checkpoint_dir = model_path / "checkpoints"
-            latest_checkpoint = None
-            if checkpoint_dir.exists() and any(checkpoint_dir.glob("checkpoint_*.pt")):
-                # Find the latest checkpoint by modification time
-                checkpoints = sorted(checkpoint_dir.glob("checkpoint_*.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
-                if checkpoints:
-                    latest_checkpoint = checkpoints[0]
-            if latest_checkpoint is not None:
-                # Use self.load to restore from checkpoint
-                self.load(latest_checkpoint.parent)
-                print(f"Resumed training from checkpoint: {latest_checkpoint}")
-            elif model_path.exists():
-                self.load(model_path)
-                print(f"Resumed training from model: {model_path}")
-            else:
-                raise FileNotFoundError(f"Model directory not found: {model_path}")
 
+        model_dir = Path(models_dir) / model_id
+        checkpoint_dir = model_dir / "checkpoints"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
+
+        print(f"Fitting with model_id: {model_id} starting on step {step}")
 
         if train_data_loader is None:
             train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
@@ -150,13 +141,10 @@ class UNet(base.BaseModel):
 
         optimizer = optimizer(params=self.model.parameters())
 
-        checkpoint_paths = []  # Track saved checkpoints
-        # TODO: steps needs to be fixed
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
-            for x, y in tqdm(train_data_loader, desc="Training", unit="batch", position=1):
+            for x, y in train_data_loader:
                 optimizer.zero_grad()
-
                 x = self.cast_fn(x)  # b, 1, h, w
                 # b, n_lbls, h, w
                 y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
@@ -167,33 +155,37 @@ class UNet(base.BaseModel):
                 loss.backward()
                 optimizer.step()
 
-                if logger is not None and step % log_every == 0:
-                    x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
-                    y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                if step % log_every == 0:
+                    self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
 
-                    fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
-                    metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
-                    for name, value in metrics_values:
-                        logger.log_scalar(name, value, step=step, train=True)
-                    for name, loss in losses:
-                        logger.log_scalar(name, loss.item(), step=step, train=True)
-                    logger.log_scalar("loss", loss.item(), step=step, train=True)
-
-                    # select a random sample from the batch
-                    sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                    sample_x = x[sample_idx, ...].squeeze()
-                    sample_y = y[sample_idx, ...].squeeze()
-                    sample_pred = pred[sample_idx, ...].squeeze()
-
-                    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
+                    if logger is not None:
+                        x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
+                        pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                        y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+    
+                        fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
+                        metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
+                        for name, value in metrics_values:
+                            logger.log_scalar(name, value, step=step, train=True)
+                        for name, loss in losses:
+                            logger.log_scalar(name, loss.item(), step=step, train=True)
+                        logger.log_scalar("loss", loss.item(), step=step, train=True)
+    
+                        # select a random sample from the batch
+                        sample_idx = np.random.choice(x.shape[0], size=1)[0]
+                        sample_x = x[sample_idx, ...].squeeze()
+                        sample_y = y[sample_idx, ...].squeeze()
+                        sample_pred = pred[sample_idx, ...].squeeze()
+    
+                        logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
                 step += 1
-
+        
             if logger is not None:
                 self.model.eval()
                 loss_numerator = defaultdict(float)
                 loss_denominator = defaultdict(float)
-                for x, y in tqdm(test_data_loader, desc="Testing", unit="batch", position=2):
+                print("Testing")
+                for x, y in test_data_loader:
                     with torch.no_grad():
                         x = apply_tpl(self.cast_fn, x)
                         y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
@@ -226,28 +218,11 @@ class UNet(base.BaseModel):
                 sample_x = x[sample_idx, ...].squeeze()
                 sample_y = y[sample_idx, ...].squeeze()
                 sample_pred = pred[sample_idx, ...].squeeze()
-                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
+                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)   
 
-            # Save checkpoint after each testing step (end of epoch)
-            if model_dir and model_id:
-                checkpoint_dir = Path(model_dir) / model_id / "checkpoints"
-                checkpoint_dir.mkdir(parents=True, exist_ok=True)
-                checkpoint_path = checkpoint_dir / f"checkpoint_step_{step}.pt"
-                # Use self.save to save checkpoint (step is tracked in self.step)
-                self.step = step
-                self.save(checkpoint_path.parent)
-                checkpoint_paths.append(checkpoint_path)
-                if len(checkpoint_paths) > n_checkpoints:
-                    oldest = checkpoint_paths.pop(0)
-                    if oldest.exists():
-                        oldest.unlink()
-        # After all epochs, save the latest checkpoint as model.pt one directory up
-        if model_dir and model_id and checkpoint_paths:
-            latest_checkpoint = checkpoint_paths[-1]
-            model_path = Path(model_dir) / model_id / "model.pt"
-            # Use self.save to save the final model
-            self.load(latest_checkpoint.parent)
-            self.save(model_path.parent)
+        # After all epochs save a copy in the models_dir
+        self.save(model_dir / "model.pt")
+
         return self
 
     @override
@@ -337,24 +312,68 @@ class UNet(base.BaseModel):
                 pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
                 bin_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
 
+    def save_checkpoint(self, checkpoint_dir:Path|str, n_checkpoints:int, step:int) -> None:
+        checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        checkpoints = list(checkpoint_dir.glob("*.pt"))
+
+        if len(checkpoints) >= n_checkpoints:
+            need_to_remove = (len(checkpoints) - n_checkpoints) + 1
+            checkpoints_to_remove = list(sorted(
+                checkpoints, 
+                # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+                # we want to remove the oldest checkpoints so we sort by that.
+                key=lambda p: p.stat().st_mtime, 
+            ))[:need_to_remove]
+
+            for ctr in checkpoints_to_remove:
+                ctr.unlink()
+        
+        checkpoint_path = checkpoint_dir / f"checkpoint_{step}.pt"
+
+        self.step = step
+        self.save(checkpoint_path)
+        
+    def load_checkpoint(self, checkpoint_dir:Path|str) -> None:
+        checkpoint_dir = Path(checkpoint_dir)
+        if not checkpoint_dir.exists():
+            raise FileNotFoundError(f"Checkpoint dir {str(checkpoint_dir)} does not exist")
+
+        checkpoints = list(checkpoint_dir.glob("checkpoint_*.pt"))
+
+        if len(checkpoints)==0:
+            warnings.warn("No checkpoints found to load")
+            return
+
+        checkpoint = sorted(
+            checkpoints, 
+            # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+            # we want to retrieve the latest checkpoint, so we reverse the sort
+            key=lambda p: p.stat().st_mtime, 
+            reverse=True
+        )[0]
+        print(f"Loading checkpoint: {str(checkpoint)}")
+        self.load(checkpoint)
+    
     @override
     def save(self, path: str | Path) -> None:
-        save_dir = Path(path) / (self.exp_id if self.exp_id else "model")
-        save_dir.mkdir(parents=True, exist_ok=True)
-
-        model_path = save_dir / "model.pt"
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'step': getattr(self, 'step', 0)
-        }, model_path)
+        path = Path(path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "step": getattr(self, "step", 0)
+            }, 
+            path,
+        )
 
     @override
     def load(self, path: str | Path) -> None:
-        load_dir = Path(path)
-        model_path = load_dir / "model.pt"
-        checkpoint = torch.load(model_path, map_location=self.device)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.step = checkpoint.get('step', 0)
+        path = Path(path)
+        data = torch.load(path)
+        self.model.load_state_dict(data["model_state_dict"])
+        self.model.to(self.device)
+        self.step = data.get("step", 0)
+
 
 class UNetModule(nn.Module):
     def __init__(
