@@ -1,5 +1,6 @@
 import gin.torch
 import torch
+import torch
 
 import neuro_morpho.model.unet
 import neuro_morpho.reports.generator
@@ -12,10 +13,12 @@ import neuro_morpho.model.transforms
 
 
 IN_SIZE = (1024, 1024)  # Size of the input images
+IN_SIZE = (1024, 1024)  # Size of the input images
 
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
+CometLogger.experiment_key = "827a79a5cb0f4c1abb34539c4b4e65d4"
 CometLogger.disabled = False
 
 
@@ -24,7 +27,9 @@ torch.optim.Adam.lr = 0.001
 
 pos/class_accuracy.class_idx = 1
 pos/class_accuracy.threshold = 0.5
+pos/class_accuracy.threshold = 0.5
 neg/class_accuracy.class_idx = 0
+neg/class_accuracy.threshold = 0.5
 neg/class_accuracy.threshold = 0.5
 
 
@@ -34,6 +39,8 @@ DiceLoss.smooth = 1
 
 v2.RandomCrop.size = %IN_SIZE  # Size of the random crop for training images
 v2.CenterCrop.size = %IN_SIZE  # Size of the center crop for validation/test images
+v2.ToDtype.dtype = %torch.float32
+v2.ToDtype.scale = True
 v2.ToDtype.dtype = %torch.float32
 v2.ToDtype.scale = True
 
@@ -50,9 +57,14 @@ train/v2.Compose.transforms = [
     @v2.ToImage(),
     @v2.ToDtype(),
     @v2.RandomCrop(), # Random crop for training images
+    @v2.ToImage(),
+    @v2.ToDtype(),
+    @v2.RandomCrop(), # Random crop for training images
 ]
 
 test/v2.Compose.transforms = [
+    @v2.ToImage(),
+    @v2.ToDtype(),
     @v2.ToImage(),
     @v2.ToDtype(),
     @v2.CenterCrop(), # Center crop for validation/test images
@@ -70,6 +82,7 @@ train/build_dataloader.x_dir = "data/processed/train/imgs"
 train/build_dataloader.y_dir = "data/processed/train/lbls"
 train/build_dataloader.batch_size = 2
 train/build_dataloader.num_workers = 0
+train/build_dataloader.num_workers = 0
 train/build_dataloader.shuffle = True
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
 train/build_dataloader.x_norm = @Standardize()
@@ -79,6 +92,7 @@ train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization tra
 test/build_dataloader.x_dir = "data/processed/test/imgs"
 test/build_dataloader.y_dir = "data/processed/test/lbls"
 test/build_dataloader.batch_size = 2
+test/build_dataloader.num_workers = 0
 test/build_dataloader.num_workers = 0
 test/build_dataloader.shuffle = True
 test/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for testing
@@ -96,11 +110,12 @@ CombinedLoss.losses = (
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
-# ChannelAttention.ratio = 2
-ChannelAttention.ratio = 16
+ChannelAttention.ratio = 2
 
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
+# UNet.encoder_channels = [4, 8, 16, 32, 64]
+# UNet.decoder_channels = [32, 16, 8, 4]
 # UNet.encoder_channels = [4, 8, 16, 32, 64]
 # UNet.decoder_channels = [32, 16, 8, 4]
 UNet.encoder_channels = [64, 128, 256, 512, 1024]
@@ -110,6 +125,7 @@ UNet.decoder_channels = [512, 256, 128, 64]
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
 UNet.fit.epochs = 5
+UNet.fit.epochs = 5
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
@@ -117,6 +133,8 @@ UNet.fit.metric_fns = [
     @neg/class_accuracy,
 ]
 UNet.fit.log_every = 10
+UNet.fit.models_dir = "models"
+# UNet.fit.model_id = "6c17da35135c4d469d110b8c93c6a768"
 UNet.fit.models_dir = "models"
 # UNet.fit.model_id = "6c17da35135c4d469d110b8c93c6a768"
 
