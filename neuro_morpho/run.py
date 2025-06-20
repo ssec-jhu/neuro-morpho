@@ -61,13 +61,13 @@ def run(
             folder=Path(__file__).parent,
         )
 
-        model.exp_id = logger.experiment.get_key()
         model = model.fit(
             training_x_dir,
             training_y_dir,
             testing_x_dir,
             testing_y_dir,
             logger=logger,
+            model_id=logger.experiment.get_key(),
         )
     else:
         model = model.fit(
