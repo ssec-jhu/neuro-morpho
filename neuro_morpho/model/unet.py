@@ -24,8 +24,8 @@
 # SOFTWARE.
 import functools
 import itertools
-import warnings
 import uuid
+import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
@@ -125,11 +125,10 @@ class UNet(base.BaseModel):
         models_dir: str | Path = Path("models"),
         n_checkpoints: int = 5,  # Number of checkpoints to keep
     ) -> base.BaseModel:
-
         model_dir = Path(models_dir) / model_id
         checkpoint_dir = model_dir / "checkpoints"
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
 
@@ -163,7 +162,7 @@ class UNet(base.BaseModel):
                         x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                         pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
                         y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-    
+
                         fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
                         metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
                         for name, value in metrics_values:
@@ -171,16 +170,16 @@ class UNet(base.BaseModel):
                         for name, loss in losses:
                             logger.log_scalar(name, loss.item(), step=step, train=True)
                         logger.log_scalar("loss", loss.item(), step=step, train=True)
-    
+
                         # select a random sample from the batch
                         sample_idx = np.random.choice(x.shape[0], size=1)[0]
                         sample_x = x[sample_idx, ...].squeeze()
                         sample_y = y[sample_idx, ...].squeeze()
                         sample_pred = pred[sample_idx, ...].squeeze()
-    
+
                         logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
                 step += 1
-        
+
             if logger is not None:
                 self.model.eval()
                 loss_numerator = defaultdict(float)
@@ -219,7 +218,7 @@ class UNet(base.BaseModel):
                 sample_x = x[sample_idx, ...].squeeze()
                 sample_y = y[sample_idx, ...].squeeze()
                 sample_pred = pred[sample_idx, ...].squeeze()
-                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)   
+                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
 
         # After all epochs save a copy in the models_dir
         self.save(model_dir / "model.pt")
@@ -230,57 +229,56 @@ class UNet(base.BaseModel):
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
         return self.model(torch.from_numpy(x).float().to(self.device))[0].squeeze(1).cpu().detach().numpy()
 
-    def save_checkpoint(self, checkpoint_dir:Path|str, n_checkpoints:int, step:int) -> None:
+    def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         checkpoints = list(checkpoint_dir.glob("*.pt"))
 
         if len(checkpoints) >= n_checkpoints:
             need_to_remove = (len(checkpoints) - n_checkpoints) + 1
-            checkpoints_to_remove = list(sorted(
-                checkpoints, 
-                # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
-                # we want to remove the oldest checkpoints so we sort by that.
-                key=lambda p: p.stat().st_mtime, 
-            ))[:need_to_remove]
+            checkpoints_to_remove = list(
+                sorted(
+                    checkpoints,
+                    # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+                    # we want to remove the oldest checkpoints so we sort by that.
+                    key=lambda p: p.stat().st_mtime,
+                )
+            )[:need_to_remove]
 
             for ctr in checkpoints_to_remove:
                 ctr.unlink()
-        
+
         checkpoint_path = checkpoint_dir / f"checkpoint_{step}.pt"
 
         self.step = step
         self.save(checkpoint_path)
-        
-    def load_checkpoint(self, checkpoint_dir:Path|str) -> None:
+
+    def load_checkpoint(self, checkpoint_dir: Path | str) -> None:
         checkpoint_dir = Path(checkpoint_dir)
         if not checkpoint_dir.exists():
             raise FileNotFoundError(f"Checkpoint dir {str(checkpoint_dir)} does not exist")
 
         checkpoints = list(checkpoint_dir.glob("checkpoint_*.pt"))
 
-        if len(checkpoints)==0:
+        if len(checkpoints) == 0:
             warnings.warn("No checkpoints found to load")
             return
 
         checkpoint = sorted(
-            checkpoints, 
+            checkpoints,
             # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
             # we want to retrieve the latest checkpoint, so we reverse the sort
-            key=lambda p: p.stat().st_mtime, 
-            reverse=True
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
         )[0]
         print(f"Loading checkpoint: {str(checkpoint)}")
         self.load(checkpoint)
-    
+
     @override
     def save(self, path: str | Path) -> None:
         path = Path(path)
         torch.save(
-            {
-                "model_state_dict": self.model.state_dict(),
-                "step": getattr(self, "step", 0)
-            }, 
+            {"model_state_dict": self.model.state_dict(), "step": getattr(self, "step", 0)},
             path,
         )
 
