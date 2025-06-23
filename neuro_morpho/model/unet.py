@@ -31,17 +31,20 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import cv2
 import gin
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.utils.data as td
+from torch import nn
 from tqdm import tqdm
 from typing_extensions import override
 
-import neuro_morpho.data.data_loader as data_loader
 import neuro_morpho.logging.base as base_logging
+from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
+from neuro_morpho.model.tiler import Tiler
+from neuro_morpho.util import get_device
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -62,8 +65,7 @@ def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
     """Detach and move tensor to the specified device."""
     if idx is None:
         return tensor.detach().cpu().numpy()
-    else:
-        return tensor[idx].detach().cpu().numpy()
+    return tensor[idx].detach().cpu().numpy()
 
 
 @gin.register
@@ -74,7 +76,7 @@ class UNet(base.BaseModel):
         n_output_channels: int = 1,
         encoder_channels: list[int] = [64, 128, 256, 512, 1024],
         decoder_channels: list[int] = [512, 256, 128, 64],
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        device: str = get_device(),
     ):
         super(UNet, self).__init__()
         self.model = UNetModule(
@@ -86,10 +88,6 @@ class UNet(base.BaseModel):
         self.cast_fn = functools.partial(cast_and_move, device=device)
         self.device = device
         self.exp_id: str = None
-
-    @override
-    def predict_dir(self, in_dir: Path | str, out_dir: Path | str):
-        raise NotImplementedError(ERR_PREDICT_DIR_NOT_IMPLEMENTED)
 
     @gin.register(
         allowlist=[
@@ -226,8 +224,75 @@ class UNet(base.BaseModel):
         return self
 
     @override
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        return self.model(torch.from_numpy(x).float().to(self.device))[0].squeeze(1).cpu().detach().numpy()
+    def predict_proba(self, x: np.ndarray, tile_size: int, tile_assembly: str) -> np.ndarray:
+        x = np.squeeze(x, axis=(0, 1))  # Remove batch_size and channels from (batch, channels, height, width)
+        image_size = x.shape  # (height, width)
+        tiler = Tiler(tile_size, tile_assembly)
+        tiler.x_coords, tiler.y_coords, tiler.nearest_map = tiler.get_tiling_attributes(image_size)
+        image_tiles = tiler.tile_image(x)
+
+        n_x, n_y = len(tiler.x_coords), len(tiler.y_coords)
+        pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+        for i in range(n_y):
+            for j in range(n_x):
+                tile = image_tiles[i * n_x + j, :, :]
+                # Start the inferring process
+                tile_flip_0 = tile[::-1, ...]  # Vertical flip
+                tile_flip_1 = tile[:, ::-1, ...]  # Horizontal flip
+                tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
+                tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
+                tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
+                with torch.no_grad():
+                    pred, _, _, _ = self.model(tile_torch)
+                    pred = torch.sigmoid(pred)
+                    pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
+                pred_ori = pred_ori.cpu().numpy()
+                pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
+                pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
+                pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
+                tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
+                pred_array[
+                    i * n_x + j,
+                    tiler.y_coords[i] : (tiler.y_coords[i] + tiler.tile_size),
+                    tiler.x_coords[j] : (tiler.x_coords[j] + tiler.tile_size),
+                ] = tile_pred
+
+        # Averaging the result
+        non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
+        non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
+        non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
+        if tiler.tile_assembly == "mean":
+            non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
+            non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
+            pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
+        elif tiler.tile_assembly == "max":
+            pred = np.max(pred_array * non_zero_mask, axis=0)
+        elif tiler.tile_assembly == "nn":  # nearest neighbor
+            pred = np.zeros(image_size, dtype=np.float32)
+            for idx in range(n_y * n_x):
+                pred[tiler.nearest_map == idx] = pred_array[idx, tiler.nearest_map == idx]
+        else:
+            pred = np.zeros(image_size, dtype=np.float32)
+            raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
+
+        return pred[np.newaxis, np.newaxis, :, :]  # (1, 1, height, width)
+
+    @override
+    def predict_dir(self, in_dir: str | Path, out_dir: str | Path, tile_size: int, tile_assembly: str) -> None:
+        in_dir = Path(in_dir)
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        img_paths = sorted(list(Path(in_dir).glob("*.tif")) + list(Path(in_dir).glob("*.pgm")))
+        for img_path in img_paths:
+            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
+            # Convert to shape (1, 1, image.shape[0], image.shape[1]) => 1 sample, 1 channel
+            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+            pred = self.predict_proba(image, tile_size, tile_assembly)
+            pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
+            pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
+            cv2.imwrite(pred_path, pred)
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)

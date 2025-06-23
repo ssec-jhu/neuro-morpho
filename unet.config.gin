@@ -1,4 +1,5 @@
 import gin.torch
+import gin.torch.external_configurables
 import torch
 
 import neuro_morpho.model.unet
@@ -97,7 +98,8 @@ CombinedLoss.losses = (
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
-ChannelAttention.ratio = 2
+# ChannelAttention.ratio = 2
+ChannelAttention.ratio = 16
 
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
@@ -105,7 +107,7 @@ UNet.n_output_channels = 1
 # UNet.decoder_channels = [32, 16, 8, 4]
 UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
-UNet.device = "cuda"
+# UNet.device = "cuda"
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
@@ -140,8 +142,10 @@ skeleton_analysis.stat_fns = [
 ]
 
 
-
+run.train = False
+run.infer = True
 run.model = @UNet()
+run.model_file = "27b55b978fea46ceb9a072eca9284c7e.pt"
 run.training_x_dir = "data/processed/train/imgs"
 run.training_y_dir = "data/processed/train/lbls"
 run.testing_x_dir = "data/processed/test/imgs"
@@ -149,6 +153,8 @@ run.testing_y_dir = "data/processed/test/lbls"
 run.model_save_dir = "models"
 run.model_out_y_dir = "data/output"
 run.model_stats_output_dir = "data/stats/model"
-run.labled_stats_outpur_dir = "data/stats/label"
+run.labeled_stats_output_dir = "data/stats/label"
 run.report_output_dir = "data/report"
 run.logger = @CometLogger()
+run.tile_size = 512
+run.tile_assembly = 'nn'

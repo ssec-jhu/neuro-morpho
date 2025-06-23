@@ -68,8 +68,7 @@ def generate_statistics(
 
     in_pairs = list(
         map(
-            lambda x: (x, out_dir / x.name.replace("pgm", "json")),
-            Path(in_dir).glob("*.pgm"),
+            lambda x: (x, out_dir / f"{x.stem}.json"), [f for ext in ("*.pgm", "*.tif") for f in Path(in_dir).glob(ext)]
         )
     )
 
