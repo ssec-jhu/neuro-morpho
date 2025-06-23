@@ -32,18 +32,17 @@ class CometLogger(base.Logger):
             experiment (comet_ml.Experiment): The comet.ml experiment object.
         """
         self.experiment = comet_ml.start(
-            api_key = api_key or os.getenv("COMET_API_KEY"),
-            project_name = project_name,
-            workspace = workspace,
-            experiment_key = experiment_key,
-            experiment_config = comet_ml.ExperimentConfig(
+            api_key=api_key or os.getenv("COMET_API_KEY"),
+            project_name=project_name,
+            workspace=workspace,
+            experiment_key=experiment_key,
+            experiment_config=comet_ml.ExperimentConfig(
                 auto_param_logging=auto_param_logging,
                 auto_metric_logging=auto_metric_logging,
                 disabled=disabled,
             ),
         )
 
-    
     @override
     def log_scalar(self, name: str, value: float, step: int, train: bool) -> None:
         ctx = self.experiment.train if train else self.experiment.test
