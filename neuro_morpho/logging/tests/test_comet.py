@@ -66,7 +66,7 @@ def test_log_parameters():
         disabled=True,
     )
 
-    metrics = {"learning_rate": 0.001, "batch_size": 32}
+    metrics = {"learning_rate": 0.001, "batch_size": 32, "curr_step": 1}
     logger.log_parameters(metrics)
 
     assert logger.experiment is not None
