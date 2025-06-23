@@ -81,9 +81,9 @@ def test_save(tmp_path: Path):
         decoder_channels=[512, 256, 128, 64],
     )
 
-    model_path = tmp_path
+    model_path = tmp_path / "model.pt"
     model.save(model_path)
-    assert (model_path / "model.pt").exists()
+    assert model_path.exists()
 
 
 def test_load(tmp_path: Path):
@@ -96,8 +96,8 @@ def test_load(tmp_path: Path):
         decoder_channels=[512, 256, 128, 64],
     )
 
-    model.save(tmp_path)
     model_path = tmp_path / "model.pt"
+    model.save(model_path)
 
     model_2 = unet.UNet(
         n_input_channels=1,
