@@ -119,18 +119,18 @@ class UNet(base.BaseModel):
         logger: base_logging.Logger = None,
         log_every: int = 10,
         init_step: int = 0,
-        model_id: str = uuid.uuid4(),
+        model_id: str | None = None,
         models_dir: str | Path = Path("models"),
         n_checkpoints: int = 5,  # Number of checkpoints to keep
     ) -> base.BaseModel:
+        model_id = model_id or str(uuid.uuid4()).replace("-", "")
+
         model_dir = Path(models_dir) / model_id
         checkpoint_dir = model_dir / "checkpoints"
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
-
-        print(f"Fitting with model_id: {model_id} starting on step {step}")
 
         if train_data_loader is None:
             train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
@@ -529,3 +529,10 @@ class SpatialAttention(nn.Module):
         x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv1(x)
         return self.sigmoid(x)
+
+
+if __name__ == "__main__":
+    # Example usage
+    model = UNet(n_input_channels=1, n_output_channels=1)
+    model.fit()
+    model.fit()
