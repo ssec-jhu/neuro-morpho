@@ -96,3 +96,81 @@ def test_load(tmp_path: Path):
     )
     model_2.load(model_path)
     assert isinstance(model_2, unet.UNet)
+
+
+def test_save_checkpoint_single(tmp_path: Path):
+    """Test saving a checkpoint."""
+    model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+    step = 0
+    n_checkpoints = 5
+    expected_path = tmp_path / f"checkpoint_{step}.pt"
+
+    model.save_checkpoint(tmp_path, n_checkpoints, step)
+
+    assert expected_path.exists()
+    assert expected_path.is_file()
+
+
+def test_save_checkpoint_multiple(tmp_path: Path):
+    """Test saving a checkpoint."""
+    model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+
+    n_checkpoints = 3
+
+    for i in range(n_checkpoints + 1):
+        expected_path = tmp_path / f"checkpoint_{i}.pt"
+        model.save_checkpoint(tmp_path, n_checkpoints, i)
+        assert expected_path.exists()
+        assert expected_path.is_file()
+
+    # the oldest checkpoint should have been removed
+    assert not (tmp_path / "checkpoint_0.pt").exists()
+
+
+def test_load_checkpoint(tmp_path: Path):
+    """Test loading a checkpoint."""
+    model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+
+    step = 0
+    model_path = tmp_path / f"checkpoint_{step}.pt"
+    model.save(model_path)
+
+    loaded_model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+    loaded_model.load_checkpoint(model_path)
+
+    for k in model.model.state_dict().keys():
+        assert k in loaded_model.model.state_dict()
+        assert model.model.state_dict()[k].shape == loaded_model.model.state_dict()[k].shape
+
+
+def test_load_checkpoint_invalid_path():
+    """Test loading a checkpoint with an invalid path."""
+    model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+
+    with pytest.raises(FileNotFoundError):
+        model.load_checkpoint("invalid_path")
