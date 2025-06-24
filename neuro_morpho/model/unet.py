@@ -529,10 +529,3 @@ class SpatialAttention(nn.Module):
         x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv1(x)
         return self.sigmoid(x)
-
-
-if __name__ == "__main__":
-    # Example usage
-    model = UNet(n_input_channels=1, n_output_channels=1)
-    model.fit()
-    model.fit()
