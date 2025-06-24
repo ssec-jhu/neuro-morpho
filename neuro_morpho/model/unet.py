@@ -376,7 +376,8 @@ class UNet(base.BaseModel):
     @override
     def load(self, path: str | Path) -> None:
         path = Path(path)
-        data = torch.load(path)
+        # We are the ones saving and loading the model, so we trust the source.
+        data = torch.load(path)  # nosec B614
         self.model.load_state_dict(data["model_state_dict"])
         self.model.to(self.device)
         self.step = data.get("step", 0)
