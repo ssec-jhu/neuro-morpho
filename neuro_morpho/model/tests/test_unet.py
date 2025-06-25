@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from neuro_morpho.model import unet
+from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
 
 
@@ -57,7 +58,9 @@ def test_shapes():
     )
     tile_size = 128
     tile_assembly = "mean"
-    output_tensor = model.predict_proba(input_tensor, tile_size, tile_assembly)
+    tiler = Tiler(tile_size, tile_assembly)
+    tiler.get_tiling_attributes(image_size=(256, 256))
+    output_tensor = model.predict_proba(input_tensor, tiler)
     assert output_tensor.shape == (1, 1, 256, 256)
 
 

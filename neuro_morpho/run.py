@@ -4,6 +4,7 @@ import gin
 
 import neuro_morpho.logging.base as log
 from neuro_morpho.model import base
+from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.reports import generator
 
 
@@ -37,8 +38,10 @@ def run(
     logger: log.Logger = None,
     train: bool = False,
     infer: bool = False,
+    binarize: bool = True,
     tile_size: int = 512,
     tile_assembly: str = "nn",
+    image_size: tuple[int, int] = (3334, 3334),
 ):
     """Run the model on the data and save the results.
 
@@ -56,8 +59,6 @@ def run(
     model_stats_output_dir = Path(model_stats_output_dir)
     labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
-    # tile_size = tile_size
-    # tile_assembly = tile_assembly
 
     if train:
         if logger is not None:
@@ -101,4 +102,6 @@ def run(
             model.load(model_save_dir / model_file)
             if not model.exists():
                 raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
-        model.predict_dir(testing_x_dir, model_out_y_dir, tile_size, tile_assembly)
+        tiler = Tiler(tile_size, tile_assembly)
+        tiler.get_tiling_attributes(image_size)
+        model.predict_dir(testing_x_dir, model_out_y_dir, testing_y_dir, tiler, binarize)
