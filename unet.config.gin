@@ -139,6 +139,7 @@ skeleton_analysis.stat_fns = [
 
 run.train = False
 run.infer = True
+run.binarize = True
 run.model = @UNet()
 run.model_file = "27b55b978fea46ceb9a072eca9284c7e.pt"
 run.training_x_dir = "data/processed/train/imgs"
@@ -153,3 +154,4 @@ run.report_output_dir = "data/report"
 run.logger = @CometLogger()
 run.tile_size = 512
 run.tile_assembly = 'nn'
+run.image_size = (3334, 3334)
