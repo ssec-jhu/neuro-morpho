@@ -16,7 +16,6 @@ IN_SIZE = (1024, 1024)  # Size of the input images
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = "827a79a5cb0f4c1abb34539c4b4e65d4"
 CometLogger.disabled = False
 
 
@@ -145,7 +144,6 @@ run.train = False
 run.infer = True
 run.binarize = True
 run.model = @UNet()
-run.model_file = "27b55b978fea46ceb9a072eca9284c7e.pt"
 run.training_x_dir = "data/processed/train/imgs"
 run.training_y_dir = "data/processed/train/lbls"
 run.testing_x_dir = "data/processed/test/imgs"
