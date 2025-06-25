@@ -18,7 +18,6 @@ IN_SIZE = (1024, 1024)  # Size of the input images
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = "827a79a5cb0f4c1abb34539c4b4e65d4"
 CometLogger.disabled = False
 
 
