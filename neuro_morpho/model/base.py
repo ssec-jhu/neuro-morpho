@@ -24,7 +24,9 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool) -> None:
+    def predict_dir(
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool
+    ) -> None:
         """Predict the output for all images in the given directory.
 
         Args:
