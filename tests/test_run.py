@@ -1,5 +1,4 @@
 import itertools
-import itertools
 from pathlib import Path
 
 import cv2
