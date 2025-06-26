@@ -53,8 +53,8 @@ ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
 
 
 def apply_tpl(fn: Callable, item: Any | tuple[Any, ...]) -> Any | tuple:
-    """Apply a function to an item or to all of the items in a tuple."""
-    return tuple(map(fn, item)) if isinstance(item, tuple) else fn(item)
+    """Apply a function to a an item or to all of the items in a tuple."""
+    return tuple(map(fn, item)) if isinstance(item, tuple | list) else fn(item)
 
 
 def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
@@ -67,6 +67,84 @@ def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
     if idx is None:
         return tensor.detach().cpu().numpy()
     return tensor[idx].detach().cpu().numpy()
+
+
+def train_step(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: loss.LOSS_FN,
+    y: torch.Tensor,
+    x: torch.Tensor,
+) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
+    """Perform a single training step."""
+    optimizer.zero_grad()
+
+    pred = model(x)
+    losses = loss_fn(pred, y)
+    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
+    loss.backward()
+    optimizer.step()
+
+    return pred, losses
+
+
+def test_step(
+    model: torch.nn.Module,
+    loss_fn: loss.LOSS_FN,
+    x: torch.Tensor,
+    y: torch.Tensor,
+) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
+    """Perform a single testing step."""
+    with torch.no_grad():
+        pred = model(x)
+        losses = loss_fn(pred, y)
+
+    return pred, losses
+
+
+def log_metrics(
+    logger: base_logging.Logger,
+    metric_fns: list[metrics.METRIC_FN],
+    pred: torch.Tensor,
+    y: torch.Tensor,
+    is_train: bool,
+    step: int,
+) -> None:
+    """Log metrics to the logger."""
+    metrics_values = [fn(pred, y) for fn in metric_fns]
+    for name, value in metrics_values:
+        logger.log_scalar(name, value, step=step, train=is_train)
+
+
+def log_losses(
+    logger: base_logging.Logger,
+    losses: list[tuple[str, torch.Tensor]],
+    total_loss: torch.Tensor,
+    is_train: bool,
+    step: int,
+) -> None:
+    """Log losses to the logger."""
+    for name, value in losses:
+        logger.log_scalar(name, value.item(), step=step, train=is_train)
+    logger.log_scalar("loss", total_loss.item(), step=step, train=is_train)
+
+
+def log_sample(
+    logger: base_logging.Logger,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    pred: torch.Tensor,
+    is_train: bool,
+    step: int,
+) -> None:
+    """Log a sample triplet (input, target, prediction) to the logger."""
+    # select a random sample from the batch
+    sample_idx = np.random.choice(x.shape[0], size=1)[0]
+    sample_x = x[sample_idx, ...].squeeze()
+    sample_y = y[sample_idx, ...].squeeze()
+    sample_pred = pred[sample_idx, ...].squeeze()
+
+    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=is_train)
 
 
 @gin.register
@@ -143,81 +221,89 @@ class UNet(base.BaseModel):
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
             for x, y in train_data_loader:
-                optimizer.zero_grad()
                 x = self.cast_fn(x)  # b, 1, h, w
                 # b, n_lbls, h, w
                 y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
-                pred = self.model(x)
-                losses = loss_fn(pred, y)
-                loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
-                loss.backward()
-                optimizer.step()
+                pred, losses = train_step(
+                    model=self.model,
+                    optimizer=optimizer,
+                    loss_fn=loss_fn,
+                    metric_fns=metric_fns,
+                    logger=logger,
+                    log_every=log_every,
+                    y=y,
+                    x=x,
+                    step=step,
+                )
 
-                if step % log_every == 0:
+                if logger is not None and step % log_every == 0:
                     self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+                    x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
+                    y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
 
-                    if logger is not None:
-                        x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                        pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
-                        y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                    log_metrics(
+                        logger=logger,
+                        metric_fns=metric_fns,
+                        pred=pred,
+                        y=y,
+                        is_train=True,
+                        step=step,
+                    )
 
-                        fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
-                        metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
-                        for name, value in metrics_values:
-                            logger.log_scalar(name, value, step=step, train=True)
-                        for name, loss in losses:
-                            logger.log_scalar(name, loss.item(), step=step, train=True)
-                        logger.log_scalar("loss", loss.item(), step=step, train=True)
+                    log_losses(
+                        logger=logger,
+                        losses=losses,
+                        step=step,
+                    )
 
-                        # select a random sample from the batch
-                        sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                        sample_x = x[sample_idx, ...].squeeze()
-                        sample_y = y[sample_idx, ...].squeeze()
-                        sample_pred = pred[sample_idx, ...].squeeze()
-
-                        logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
-                step += 1
+                    log_sample(
+                        logger=logger,
+                        x=x,
+                        y=y,
+                        pred=pred,
+                        is_train=True,
+                        step=step,
+                    )
 
             if logger is not None:
+                self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
                 self.model.eval()
-                loss_numerator = defaultdict(float)
-                loss_denominator = defaultdict(float)
-                print("Testing")
-                for x, y in test_data_loader:
-                    with torch.no_grad():
-                        x = apply_tpl(self.cast_fn, x)
-                        y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
+                scalars_numerator = defaultdict(float)
+                scalars_denominator = defaultdict(float)
 
-                        pred = self.model(x)
-                        losses = loss_fn(pred, y)
-                        loss = sum(losses) if isinstance(losses, tuple) else losses
+                for x, y  in test_data_loader:
+                    x = apply_tpl(self.cast_fn, x)
+                    y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
-                        for name, loss in losses:
-                            loss_numerator[name] += loss.item()
-                            loss_denominator[name] += x.shape[0]
+                    pred, losses = test_step(
+                        model=self.model,
+                        loss_fn=loss_fn,
+                        x=x,
+                        y=y,
+                    )
+                    x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
 
-                        x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                        pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
-                        y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
+                    metrics_values = [fn(pred, y) for fn in metric_fns]
+                    for name, loss in losses + metrics_values + [("loss", loss)]:
+                        scalars_numerator[name] += loss.item() * x.shape[0]
+                        scalars_denominator[name] += x.shape[0]
 
-                        fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
-                        metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
-                        for name, value in metrics_values:
-                            loss_numerator[name] += value * x.shape[0]  # accumulate total metric value
-                            loss_denominator[name] += x.shape[0]
+                for name, num in scalars_numerator.items():
+                    logger.log_scalar(name, num / scalars_denominator[name], step=step, train=False)
 
-                        loss_numerator["loss"] += loss.item() * x.shape[0]  # accumulate total loss
-                        loss_denominator["loss"] += x.shape[0]
-
-                for name, num in loss_numerator.items():
-                    logger.log_scalar(name, num / loss_denominator[name], step=step, train=False)
-
-                sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                sample_x = x[sample_idx, ...].squeeze()
-                sample_y = y[sample_idx, ...].squeeze()
-                sample_pred = pred[sample_idx, ...].squeeze()
-                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
+                log_sample(
+                    logger=logger,
+                    x=x,
+                    y=y,
+                    pred=pred,
+                    is_train=False,
+                    step=step,
+                )
 
         # After all epochs save a copy in the models_dir
         self.save(model_dir / "model.pt")
