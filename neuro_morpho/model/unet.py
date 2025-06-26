@@ -240,6 +240,7 @@ class UNet(base.BaseModel):
 
                 if logger is not None and step % log_every == 0:
                     self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
                     pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
@@ -392,7 +393,7 @@ class UNet(base.BaseModel):
                 pred_bin = (pred_bin * 255).astype(np.uint8)
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
-    
+
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
