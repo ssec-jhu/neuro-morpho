@@ -73,15 +73,15 @@ def train_step(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     loss_fn: loss.LOSS_FN,
-    y: torch.Tensor,
     x: torch.Tensor,
+    y: torch.Tensor,
 ) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
     """Perform a single training step."""
     optimizer.zero_grad()
 
     pred = model(x)
     losses = loss_fn(pred, y)
-    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
+    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses[0], (tuple, list)) else losses[1]
     loss.backward()
     optimizer.step()
 
@@ -136,10 +136,11 @@ def log_sample(
     pred: torch.Tensor,
     is_train: bool,
     step: int,
+    idx: int | None = None,
 ) -> None:
     """Log a sample triplet (input, target, prediction) to the logger."""
     # select a random sample from the batch
-    sample_idx = np.random.choice(x.shape[0], size=1)[0]
+    sample_idx = idx if idx is not None else np.random.choice(x.shape[0], size=1)[0]
     sample_x = x[sample_idx, ...].squeeze()
     sample_y = y[sample_idx, ...].squeeze()
     sample_pred = pred[sample_idx, ...].squeeze()
@@ -232,8 +233,8 @@ class UNet(base.BaseModel):
                     metric_fns=metric_fns,
                     logger=logger,
                     log_every=log_every,
-                    y=y,
                     x=x,
+                    y=y,
                     step=step,
                 )
 
@@ -273,7 +274,7 @@ class UNet(base.BaseModel):
                 scalars_numerator = defaultdict(float)
                 scalars_denominator = defaultdict(float)
 
-                for x, y  in test_data_loader:
+                for x, y in test_data_loader:
                     x = apply_tpl(self.cast_fn, x)
                     y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
