@@ -352,7 +352,7 @@ def test_load_checkpoint(tmp_path: Path):
         encoder_channels=[64, 128, 256, 512, 1024],
         decoder_channels=[512, 256, 128, 64],
     )
-    loaded_model.load_checkpoint(model_path)
+    loaded_model.load_checkpoint(tmp_path)
 
     for k in model.model.state_dict().keys():
         assert k in loaded_model.model.state_dict()

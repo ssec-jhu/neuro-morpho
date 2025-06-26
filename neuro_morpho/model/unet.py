@@ -240,6 +240,7 @@ class UNet(base.BaseModel):
 
                 if logger is not None and step % log_every == 0:
                     self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
                     pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
