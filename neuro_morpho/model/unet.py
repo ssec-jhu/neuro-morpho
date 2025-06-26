@@ -76,6 +76,7 @@ def train_step(
     optimizer: torch.optim.Optimizer,
     loss_fn: loss.LOSS_FN,
     x: torch.Tensor,
+    x: torch.Tensor,
     y: torch.Tensor,
 ) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
     """Perform a single training step."""
@@ -87,13 +88,7 @@ def train_step(
 
     # start = time()
     losses = loss_fn(pred, y)
-    # print("losses takes", time()-start)
-
-    # start = time()
     loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses[0], (tuple, list)) else losses[1]
-    # print("total loss takes", time()-start)
-
-    # start = time()
     loss.backward()
     # print("loss takes", time()-start)
 
@@ -249,8 +244,8 @@ class UNet(base.BaseModel):
                     metric_fns=metric_fns,
                     logger=logger,
                     log_every=log_every,
-                    y=y,
                     x=x,
+                    y=y,
                     step=step,
                 )
 
@@ -290,7 +285,7 @@ class UNet(base.BaseModel):
                 scalars_numerator = defaultdict(float)
                 scalars_denominator = defaultdict(float)
 
-                for x, y  in test_data_loader:
+                for x, y in test_data_loader:
                     x = apply_tpl(self.cast_fn, x)
                     y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
 
