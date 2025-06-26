@@ -41,6 +41,199 @@ def test_detach_and_move():
     np.testing.assert_equal(inputs.numpy()[0], unet.detach_and_move(inputs, 0))
 
 
+class MockModel:
+    """Mock model for testing purposes."""
+
+    def __init__(self, fn: Callable[[np.ndarray], np.ndarray]):
+        self.fn = fn
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        return self.fn(x)
+
+
+class MockOptimizer:
+    """Mock optimizer for testing purposes."""
+
+    def step(self):
+        pass
+
+    def zero_grad(self):
+        pass
+
+
+class MockLoss:
+    def __init__(self, outputs: np.ndarray, targets: np.ndarray):
+        self.outputs = outputs
+        self.targets = targets
+        self.loss_value = np.mean(outputs - targets)
+
+    def item(self) -> float:
+        """Return the loss value."""
+        return self.loss_value
+
+    def backward(self):
+        """Mock backward pass."""
+        pass
+
+    def __add__(self, other: "MockLoss") -> "MockLoss":
+        """Add two MockLoss instances."""
+        return MockLoss(self.outputs + other.outputs, self.targets + other.targets)
+
+
+class MockLossFn:
+    """Mock loss function for testing purposes."""
+
+    def __call__(self, outputs: np.ndarray, targets: np.ndarray) -> float:
+        return ("test", MockLoss(outputs, targets))
+
+
+class MockLogger:
+    """Mock logger for testing purposes."""
+
+    def __init__(self):
+        self.logs = []
+
+    def log_scalar(self, name: str, value: float, step: int, train: bool = True):
+        self.logs.append((name, value, step, train))
+
+    def log_triplet(
+        self, in_img: np.ndarray, out_img: np.ndarray, target_img: np.ndarray, name: str, step: int, train: bool
+    ):
+        self.logs.append((name, in_img, out_img, target_img, step, train))
+
+
+class MockMetricFn:
+    """Mock metric function for testing purposes."""
+
+    def __init__(self, name: str, fn: Callable[[np.ndarray, np.ndarray], float]):
+        self.name = name
+        self.fn = fn
+
+    def __call__(self, outputs: np.ndarray, targets: np.ndarray) -> float:
+        return (self.name, np.mean(outputs - targets))
+
+
+def test_train_step():
+    """Test the train_step method of the UNet model."""
+    # Create a mock model and optimizer
+    model = MockModel(lambda x: x * 2)
+    optimizer = MockOptimizer()
+    loss_fn = MockLossFn()
+
+    # Create a dummy input and target
+    inputs = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
+    targets = np.array([[2, 4, 6], [8, 10, 12]], dtype=np.float32)
+
+    # Call the train_step method
+    outputs, losses = unet.train_step(model, optimizer, loss_fn, inputs, targets)
+
+    # Check the outputs and losses
+    assert np.array_equal(outputs, inputs * 2)
+    assert len(losses) == 2
+    assert losses[0] == "test"
+    assert losses[1].item() == np.mean(outputs - targets)
+    assert isinstance(losses[1], MockLoss)
+
+
+def test_test_step():
+    """Test the test_step method of the UNet model."""
+    # Create a mock model and optimizer
+    model = MockModel(lambda x: x * 2)
+    loss_fn = MockLossFn()
+
+    # Create a dummy input and target
+    inputs = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
+    targets = np.array([[2, 4, 6], [8, 10, 12]], dtype=np.float32)
+
+    # Call the train_step method
+    outputs, losses = unet.test_step(model, loss_fn, inputs, targets)
+
+    # Check the outputs and losses
+    assert np.array_equal(outputs, inputs * 2)
+    assert len(losses) == 2
+    assert losses[0] == "test"
+    assert losses[1].item() == np.mean(outputs - targets)
+    assert isinstance(losses[1], MockLoss)
+
+
+def test_log_metrics():
+    """Test the log_metrics method of the UNet model."""
+    # Create a mock logger
+    logger = MockLogger()
+    metric_fs = [
+        MockMetricFn("mean", lambda x, y: np.mean(x - y)),
+        MockMetricFn("std", lambda x, y: np.std(x - y)),
+    ]
+    expected_logs = [
+        ("mean", 0.0, 1, True),
+        ("std", 0.0, 1, True),
+    ]
+
+    pred = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
+    target = np.array([[2, 4, 6], [8, 10, 12]], dtype=np.float32)
+    is_train = True
+    step = 1
+
+    unet.log_metrics(
+        logger=logger,
+        metric_fns=metric_fs,
+        pred=pred,
+        y=target,
+        is_train=is_train,
+        step=step,
+    )
+
+    # Check the logs
+    assert len(logger.logs) == len(expected_logs)
+
+
+def test_log_losses():
+    """Test the log_losses method of the UNet model."""
+    # Create a mock logger
+    logger = MockLogger()
+    losses = [
+        ("loss1", MockLoss(np.array([1, 2]), np.array([2, 3]))),
+        ("loss2", MockLoss(np.array([3, 4]), np.array([4, 5]))),
+    ]
+    total_loss = MockLoss(np.array([4, 6]), np.array([6, 8]))
+    is_train = True
+    step = 1
+
+    unet.log_losses(logger=logger, losses=losses, total_loss=total_loss, is_train=is_train, step=step)
+
+    # Check the logs
+    assert len(logger.logs) == len(losses) + 1
+    assert logger.logs[-1] == ("loss", total_loss.item(), step, is_train)
+
+
+def test_log_sample():
+    """Test the log_sample method of the UNet model."""
+    logger = MockLogger()
+    in_img = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
+    out_img = np.array([[2, 4, 6], [8, 10, 12]], dtype=np.float32)
+    target_img = np.array([[3, 6, 9], [12, 15, 18]], dtype=np.float32)
+    step = 1
+    is_train = True
+    idx = 0
+    unet.log_sample(
+        logger=logger,
+        x=in_img,
+        y=target_img,
+        pred=out_img,
+        is_train=is_train,
+        step=step,
+        idx=idx,
+    )
+
+    assert len(logger.logs) == 1
+    assert logger.logs[0][0] == "triplet"
+    assert np.array_equal(logger.logs[0][1], in_img[idx, ...].squeeze())
+    assert np.array_equal(logger.logs[0][2], target_img[idx, ...].squeeze())
+    assert np.array_equal(logger.logs[0][3], out_img[idx, ...].squeeze())
+    assert logger.logs[0][4] == step
+    assert logger.logs[0][5] == is_train
+
+
 def test_shapes():
     """Simple end-to-end test for the UNet model."""
 
