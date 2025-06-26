@@ -370,3 +370,27 @@ def test_load_checkpoint_invalid_path():
 
     with pytest.raises(FileNotFoundError):
         model.load_checkpoint("invalid_path")
+
+
+def test_fit_no_epochs(tmp_path: Path):
+    """Test the fit method with no epochs."""
+    model_id = "test"
+    model = unet.UNet(
+        n_input_channels=1,
+        n_output_channels=1,
+        encoder_channels=[64, 128, 256, 512, 1024],
+        decoder_channels=[512, 256, 128, 64],
+    )
+    optimzer = torch.optim.Adam
+    model.fit(
+        models_dir=tmp_path,
+        optimizer=optimzer,
+        train_data_loader=object(),  # Mock object for testing
+        test_data_loader=object(),  # Mock object for testing
+        epochs=0,
+        logger=None,
+        model_id=model_id,
+    )
+
+    assert (tmp_path / model_id / "checkpoints").exists()
+    assert (tmp_path / model_id / "model.pt").exists()
