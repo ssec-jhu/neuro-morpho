@@ -10,6 +10,9 @@ class Tiler:
         self,
         tile_size: int = 512,
         tile_assembly: str = "nn",
+        x_coords: np.ndarray | None = None,
+        y_coords: np.ndarray | None = None,
+        nearest_map: np.ndarray | None = None,
     ):
         super().__init__()
         self.tile_size = tile_size
@@ -18,7 +21,7 @@ class Tiler:
     def get_tiling_attributes(self, image_size):
         """Calculate Tiler's attributes based on image size, tile size and tile assembly method."""
         n_x = math.ceil(image_size[0] / self.tile_size)
-        x_coords = np.zeros(n_x, dtype=int)
+        self.x_coords = np.zeros(n_x, dtype=int)
         if n_x == 1:
             gap_x = 0
         else:
@@ -26,11 +29,11 @@ class Tiler:
         gap_x_plus_one__amount = self.tile_size * n_x - image_size[0] - gap_x * (n_x - 1)
         for i in range(1, n_x):
             if i <= gap_x_plus_one__amount:
-                x_coords[i] = int(x_coords[i - 1] + self.tile_size - (gap_x + 1))
+                self.x_coords[i] = int(self.x_coords[i - 1] + self.tile_size - (gap_x + 1))
             else:
-                x_coords[i] = int(x_coords[i - 1] + self.tile_size - gap_x)
+                self.x_coords[i] = int(self.x_coords[i - 1] + self.tile_size - gap_x)
         n_y = math.ceil(image_size[1] / self.tile_size)
-        y_coords = np.zeros(n_y, dtype=int)
+        self.y_coords = np.zeros(n_y, dtype=int)
         if n_y == 1:
             gap_y = 0
         else:
@@ -38,20 +41,18 @@ class Tiler:
         gap_y_plus_one__amount = self.tile_size * n_y - image_size[1] - gap_y * (n_y - 1)
         for i in range(1, n_y):
             if i <= gap_y_plus_one__amount:
-                y_coords[i] = int(y_coords[i - 1] + self.tile_size - (gap_y + 1))
+                self.y_coords[i] = int(self.y_coords[i - 1] + self.tile_size - (gap_y + 1))
             else:
-                y_coords[i] = int(y_coords[i - 1] + self.tile_size - gap_y)
-        nearest_map = None
+                self.y_coords[i] = int(self.y_coords[i - 1] + self.tile_size - gap_y)
+        self.nearest_map = None
         if self.tile_assembly == "nn":  # prepare nearest neighbor map
-            x_centers = np.tile(x_coords, n_y) + (self.tile_size - 1) / 2
-            y_centers = np.repeat(y_coords, n_x) + (self.tile_size - 1) / 2
+            x_centers = np.tile(self.x_coords, n_y) + (self.tile_size - 1) / 2
+            y_centers = np.repeat(self.y_coords, n_x) + (self.tile_size - 1) / 2
             y_grid, x_grid = np.meshgrid(np.arange(image_size[0]), np.arange(image_size[1]), indexing="ij")
             y_grid = y_grid[..., np.newaxis]
             x_grid = x_grid[..., np.newaxis]
             distances = np.sqrt((x_grid - x_centers) ** 2 + (y_grid - y_centers) ** 2)
-            nearest_map = np.argmin(distances, axis=-1)
-
-        return x_coords, y_coords, nearest_map
+            self.nearest_map = np.argmin(distances, axis=-1)
 
     def tile_image(self, image: np.ndarray) -> np.ndarray:
         """Tile the image to tile_size x tile_size pieces in raster order."""
