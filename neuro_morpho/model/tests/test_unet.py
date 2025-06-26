@@ -385,9 +385,9 @@ def test_fit_no_epochs(tmp_path: Path):
     model.fit(
         models_dir=tmp_path,
         optimizer=optimzer,
-        train_data_loader=object(),  # Mock object for testing
-        test_data_loader=object(),  # Mock object for testing
-        epochs=0,
+        train_data_loader=iter([]),  # Mock object for testing
+        test_data_loader=iter([]),  # Mock object for testing
+        epochs=1,
         logger=None,
         model_id=model_id,
     )
