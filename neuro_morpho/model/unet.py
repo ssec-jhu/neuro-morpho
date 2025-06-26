@@ -165,7 +165,7 @@ class UNet(base.BaseModel):
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
         ).to(device)
-        self.cast_fn = functools.partial(cast_and_move, device=device)
+        self.cast_fn = functools.partial(apply_tpl, functools.partial(cast_and_move, device=device))
         self.device = device
         self.exp_id: str = None
 
@@ -212,20 +212,16 @@ class UNet(base.BaseModel):
         self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
 
-        if train_data_loader is None:
-            train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
-        if test_data_loader is None:
-            test_data_loader = data_loader.build_dataloader(testing_x_dir, testing_y_dir)
+        train_data_loader = train_data_loader or data_loader.build_dataloader(training_x_dir, training_y_dir)
+        test_data_loader = test_data_loader or data_loader.build_dataloader(testing_x_dir, testing_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
 
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
-            for x, y in train_data_loader:
-                x = self.cast_fn(x)  # b, 1, h, w
-                # b, n_lbls, h, w
-                y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
-
+            # x: b, 1, h, w
+            # y: b, n_lbls, h, w
+            for x, y in map(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader):
                 pred, losses = train_step(
                     model=self.model,
                     optimizer=optimizer,
@@ -275,10 +271,9 @@ class UNet(base.BaseModel):
                 scalars_numerator = defaultdict(float)
                 scalars_denominator = defaultdict(float)
 
-                for x, y in test_data_loader:
-                    x = apply_tpl(self.cast_fn, x)
-                    y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
-
+                # x: b, 1, h, w
+                # y: b, n_lbls, h, w
+                for x, y in map(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader):
                     pred, losses = test_step(
                         model=self.model,
                         loss_fn=loss_fn,
