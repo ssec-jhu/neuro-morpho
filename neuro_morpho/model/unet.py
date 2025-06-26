@@ -251,6 +251,7 @@ class UNet(base.BaseModel):
 
                 if logger is not None and step % log_every == 0:
                     self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
                     pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
@@ -323,8 +324,86 @@ class UNet(base.BaseModel):
         return self
 
     @override
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        return self.model(torch.from_numpy(x).float().to(self.device))[0].squeeze(1).cpu().detach().numpy()
+    def predict_proba(self, x: np.ndarray, tiler: Tiler) -> np.ndarray:
+        x = np.squeeze(x, axis=(0, 1))  # Remove batch_size and channels from (batch, channels, height, width)
+        image_size = x.shape  # (height, width)
+        image_tiles = tiler.tile_image(x)
+
+        n_x, n_y = len(tiler.x_coords), len(tiler.y_coords)
+        pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+        for i in range(n_y):
+            for j in range(n_x):
+                tile = image_tiles[i * n_x + j, :, :]
+                # Start the inferring process
+                tile_flip_0 = tile[::-1, ...]  # Vertical flip
+                tile_flip_1 = tile[:, ::-1, ...]  # Horizontal flip
+                tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
+                tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
+                tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
+                with torch.no_grad():
+                    pred, _, _, _ = self.model(tile_torch)
+                    pred = torch.sigmoid(pred)
+                    pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
+                pred_ori = pred_ori.cpu().numpy()
+                pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
+                pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
+                pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
+                tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
+                pred_array[
+                    i * n_x + j,
+                    tiler.y_coords[i] : (tiler.y_coords[i] + tiler.tile_size),
+                    tiler.x_coords[j] : (tiler.x_coords[j] + tiler.tile_size),
+                ] = tile_pred
+
+        # Averaging the result
+        non_zero_mask = pred_array != 0  # Shape (n_x * n_y, img_height, img_width)
+        non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
+        non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
+        if tiler.tile_assembly == "mean":
+            non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
+            non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
+            pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
+        elif tiler.tile_assembly == "max":
+            pred = np.max(pred_array * non_zero_mask, axis=0)
+        elif tiler.tile_assembly == "nn":  # nearest neighbor
+            pred = np.zeros(image_size, dtype=np.float32)
+            for idx in range(n_y * n_x):
+                pred[tiler.nearest_map == idx] = pred_array[idx, tiler.nearest_map == idx]
+        else:
+            pred = np.zeros(image_size, dtype=np.float32)
+            raise ValueError(f"Unknown tile assembly method: {self.tile_assembly}")
+
+        return pred[np.newaxis, np.newaxis, :, :]  # (1, 1, height, width)
+
+    @override
+    def predict_dir(
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler = None, binarize: bool = True
+    ) -> None:
+        in_dir = Path(in_dir)
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        img_paths = sorted(list(Path(in_dir).glob("*.tif")) + list(Path(in_dir).glob("*.pgm")))
+        for img_path in img_paths:
+            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
+            # Convert to shape (1, 1, image.shape[0], image.shape[1]) => 1 sample, 1 channel
+            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+            pred = self.predict_proba(image, tiler)
+            pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
+            pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
+            cv2.imwrite(pred_path, pred)
+        if binarize:
+            thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
+            pred_paths = sorted(list(Path(out_dir).glob("*.tif")) + list(Path(out_dir).glob("*.pgm")))
+            for pred_path in pred_paths:
+                pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED) / 255.0
+                pred_bin = pred.copy()
+                pred_bin[pred_bin >= thresh] = 1
+                pred_bin[pred_bin < thresh] = 0
+                pred_bin = (pred_bin * 255).astype(np.uint8)
+                pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
+                cv2.imwrite(pred_bin_path, pred_bin)
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
