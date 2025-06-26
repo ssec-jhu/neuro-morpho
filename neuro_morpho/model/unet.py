@@ -41,6 +41,7 @@ from typing_extensions import override
 import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
+from neuro_morpho.model.threshold import ThresholdFinder
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
 
@@ -50,7 +51,7 @@ ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
 
 
 def apply_tpl(fn: Callable, item: Any | tuple[Any, ...]) -> Any | tuple:
-    """Apply a function to a an item or to all of the items in a tuple."""
+    """Apply a function to an item or to all of the items in a tuple."""
     return tuple(map(fn, item)) if isinstance(item, tuple) else fn(item)
 
 
@@ -203,11 +204,9 @@ class UNet(base.BaseModel):
         return self
 
     @override
-    def predict_proba(self, x: np.ndarray, tile_size: int, tile_assembly: str) -> np.ndarray:
+    def predict_proba(self, x: np.ndarray, tiler: Tiler) -> np.ndarray:
         x = np.squeeze(x, axis=(0, 1))  # Remove batch_size and channels from (batch, channels, height, width)
         image_size = x.shape  # (height, width)
-        tiler = Tiler(tile_size, tile_assembly)
-        tiler.x_coords, tiler.y_coords, tiler.nearest_map = tiler.get_tiling_attributes(image_size)
         image_tiles = tiler.tile_image(x)
 
         n_x, n_y = len(tiler.x_coords), len(tiler.y_coords)
@@ -257,7 +256,9 @@ class UNet(base.BaseModel):
         return pred[np.newaxis, np.newaxis, :, :]  # (1, 1, height, width)
 
     @override
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path, tile_size: int, tile_assembly: str) -> None:
+    def predict_dir(
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler = None, binarize: bool = True
+    ) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -268,10 +269,22 @@ class UNet(base.BaseModel):
             image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
             # Convert to shape (1, 1, image.shape[0], image.shape[1]) => 1 sample, 1 channel
             image = np.stack(image)[np.newaxis, np.newaxis, :, :]
-            pred = self.predict_proba(image, tile_size, tile_assembly)
+            pred = self.predict_proba(image, tiler)
             pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, pred)
+
+        if binarize:
+            thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
+            pred_paths = sorted(list(Path(out_dir).glob("*.tif")) + list(Path(out_dir).glob("*.pgm")))
+            for pred_path in pred_paths:
+                pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED) / 255.0
+                pred_bin = pred.copy()
+                pred_bin[pred_bin >= thresh] = 1
+                pred_bin[pred_bin < thresh] = 0
+                pred_bin = (pred_bin * 255).astype(np.uint8)
+                pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
+                cv2.imwrite(pred_bin_path, pred_bin)
 
     @override
     def save(self, path: str | Path) -> None:
