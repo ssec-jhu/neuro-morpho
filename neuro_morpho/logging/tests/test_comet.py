@@ -6,7 +6,7 @@ from neuro_morpho.logging.comet import CometLogger
 
 
 def test_log_scalar():
-    """Test the initialization of CometLogger."""
+    """Test logging of scalar values with CometLogger."""
     logger = CometLogger(
         api_key=None,
         project_name="test_project",
@@ -27,7 +27,7 @@ def test_log_scalar():
 
 
 def test_log_triplet():
-    """Test the initialization of CometLogger."""
+    """Test logging a triplet with the CometLogger."""
     logger = CometLogger(
         api_key=None,
         project_name="test_project",
@@ -56,7 +56,7 @@ def test_log_triplet():
 
 
 def test_log_parameters():
-    """Test the initialization of CometLogger."""
+    """Test logging parameters with the CometLogger."""
     logger = CometLogger(
         api_key=None,
         project_name="test_project",
@@ -66,7 +66,7 @@ def test_log_parameters():
         disabled=True,
     )
 
-    metrics = {"learning_rate": 0.001, "batch_size": 32}
+    metrics = {"learning_rate": 0.001, "batch_size": 32, "curr_step": 1}
     logger.log_parameters(metrics)
 
     assert logger.experiment is not None
@@ -74,7 +74,7 @@ def test_log_parameters():
 
 
 def test_log_code():
-    """Test the initialization of CometLogger."""
+    """Test logging code with the CometLogger."""
     logger = CometLogger(
         api_key=None,
         project_name="test_project",

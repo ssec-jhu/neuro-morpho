@@ -24,6 +24,8 @@
 # SOFTWARE.
 import functools
 import itertools
+import uuid
+import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
@@ -51,8 +53,8 @@ ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
 
 
 def apply_tpl(fn: Callable, item: Any | tuple[Any, ...]) -> Any | tuple:
-    """Apply a function to an item or to all of the items in a tuple."""
-    return tuple(map(fn, item)) if isinstance(item, tuple) else fn(item)
+    """Apply a function to a an item or to all of the items in a tuple."""
+    return tuple(map(fn, item)) if isinstance(item, tuple | list) else fn(item)
 
 
 def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
@@ -65,6 +67,99 @@ def detach_and_move(tensor: torch.Tensor, idx: int | None = None) -> np.ndarray:
     if idx is None:
         return tensor.detach().cpu().numpy()
     return tensor[idx].detach().cpu().numpy()
+
+
+def train_step(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: loss.LOSS_FN,
+    x: torch.Tensor,
+    y: torch.Tensor,
+) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
+    """Perform a single training step."""
+    optimizer.zero_grad()
+
+    # start = time()
+    pred = model(x)
+    # print("pred takes", time()-start)
+
+    # start = time()
+    losses = loss_fn(pred, y)
+    # print("losses takes", time()-start)
+
+    # start = time()
+    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses[0], (tuple, list)) else losses[1]
+    # print("total loss takes", time()-start)
+
+    # start = time()
+    loss.backward()
+    # print("loss takes", time()-start)
+
+    # start = time()
+    optimizer.step()
+    # print("opt step takes", time()-start)
+
+    return pred, losses
+
+
+def test_step(
+    model: torch.nn.Module,
+    loss_fn: loss.LOSS_FN,
+    x: torch.Tensor,
+    y: torch.Tensor,
+) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
+    """Perform a single testing step."""
+    with torch.no_grad():
+        pred = model(x)
+        losses = loss_fn(pred, y)
+
+    return pred, losses
+
+
+def log_metrics(
+    logger: base_logging.Logger,
+    metric_fns: list[metrics.METRIC_FN],
+    pred: torch.Tensor,
+    y: torch.Tensor,
+    is_train: bool,
+    step: int,
+) -> None:
+    """Log metrics to the logger."""
+    metrics_values = [fn(pred, y) for fn in metric_fns]
+    for name, value in metrics_values:
+        logger.log_scalar(name, value, step=step, train=is_train)
+
+
+def log_losses(
+    logger: base_logging.Logger,
+    losses: list[tuple[str, torch.Tensor]],
+    total_loss: torch.Tensor,
+    is_train: bool,
+    step: int,
+) -> None:
+    """Log losses to the logger."""
+    for name, value in losses:
+        logger.log_scalar(name, value.item(), step=step, train=is_train)
+    logger.log_scalar("loss", total_loss.item(), step=step, train=is_train)
+
+
+def log_sample(
+    logger: base_logging.Logger,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    pred: torch.Tensor,
+    is_train: bool,
+    step: int,
+    idx: int | None = None,
+) -> None:
+    """Log a sample triplet (input, target, prediction) to the logger."""
+    # select a random sample from the batch
+    sample_idx = idx if idx is not None else np.random.choice(x.shape[0], size=1)[0]
+    sample_x = x[sample_idx, ...].squeeze()
+    sample_y = y[sample_idx, ...].squeeze()
+    sample_pred = pred[sample_idx, ...].squeeze()
+
+    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=is_train)
 
 
 @gin.register
@@ -84,7 +179,7 @@ class UNet(base.BaseModel):
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
         ).to(device)
-        self.cast_fn = functools.partial(cast_and_move, device=device)
+        self.cast_fn = functools.partial(apply_tpl, functools.partial(cast_and_move, device=device))
         self.device = device
         self.exp_id: str = None
 
@@ -98,6 +193,9 @@ class UNet(base.BaseModel):
             "metric_fns",
             "logger",
             "log_every",
+            "init_step",
+            "model_id",
+            "models_dir",
         ]
     )
     def fit(
@@ -115,91 +213,111 @@ class UNet(base.BaseModel):
         logger: base_logging.Logger = None,
         log_every: int = 10,
         init_step: int = 0,
+        model_id: str | None = None,
+        models_dir: str | Path = Path("models"),
+        n_checkpoints: int = 5,  # Number of checkpoints to keep
     ) -> base.BaseModel:
-        if train_data_loader is None:
-            train_data_loader = data_loader.build_dataloader(training_x_dir, training_y_dir)
-        if test_data_loader is None:
-            test_data_loader = data_loader.build_dataloader(testing_x_dir, testing_y_dir)
+        model_id = model_id or str(uuid.uuid4()).replace("-", "")
+
+        model_dir = Path(models_dir) / model_id
+        checkpoint_dir = model_dir / "checkpoints"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+        self.load_checkpoint(checkpoint_dir)
+        step = self.step if hasattr(self, "step") else init_step
+
+        train_data_loader = train_data_loader or data_loader.build_dataloader(training_x_dir, training_y_dir)
+        test_data_loader = test_data_loader or data_loader.build_dataloader(testing_x_dir, testing_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
 
-        step = init_step
-        # TODO: steps needs to be fixed
-        for n_epoch in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
+        for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
-            for x, y in tqdm(train_data_loader, desc="Training", unit="batch", position=1):
-                optimizer.zero_grad()
-
-                x = self.cast_fn(x)  # b, 1, h, w
-                # b, n_lbls, h, w
-                y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
-
-                pred = self.model(x)
-                losses = loss_fn(pred, y)
-                loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
-                loss.backward()
-                optimizer.step()
+            # x: b, 1, h, w
+            # y: b, n_lbls, h, w
+            for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader):
+                pred, losses = train_step(
+                    model=self.model,
+                    optimizer=optimizer,
+                    loss_fn=loss_fn,
+                    x=x,
+                    y=y,
+                )
 
                 if logger is not None and step % log_every == 0:
+                    self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+
+                    x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
+                    y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+
+                    log_metrics(
+                        logger=logger,
+                        metric_fns=metric_fns,
+                        pred=pred,
+                        y=y,
+                        is_train=True,
+                        step=step,
+                    )
+
+                    log_losses(
+                        logger=logger,
+                        losses=losses,
+                        total_loss=sum(map(lambda lss: lss[1], losses)),
+                        is_train=True,
+                        step=step,
+                    )
+
+                    log_sample(
+                        logger=logger,
+                        x=x,
+                        y=y,
+                        pred=pred,
+                        is_train=True,
+                        step=step,
+                    )
+
+                step += 1
+
+            if logger is not None:
+                self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
+                self.model.eval()
+                scalars_numerator = defaultdict(float)
+                scalars_denominator = defaultdict(float)
+
+                # x: b, 1, h, w
+                # y: b, n_lbls, h, w
+                for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader):
+                    pred, losses = test_step(
+                        model=self.model,
+                        loss_fn=loss_fn,
+                        x=x,
+                        y=y,
+                    )
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
 
-                    fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
-                    metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
-                    for name, value in metrics_values:
-                        logger.log_scalar(name, value, step=step, train=True)
-                    for name, loss in losses:
-                        logger.log_scalar(name, loss.item(), step=step, train=True)
-                    logger.log_scalar("loss", loss.item(), step=step, train=True)
+                    loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
+                    metrics_values = [fn(pred, y) for fn in metric_fns]
+                    for name, loss in losses + metrics_values + [("loss", loss)]:
+                        scalars_numerator[name] += loss.item() * x.shape[0]
+                        scalars_denominator[name] += x.shape[0]
 
-                    # select a random sample from the batch
-                    sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                    sample_x = x[sample_idx, ...].squeeze()
-                    sample_y = y[sample_idx, ...].squeeze()
-                    sample_pred = pred[sample_idx, ...].squeeze()
+                for name, num in scalars_numerator.items():
+                    logger.log_scalar(name, num / scalars_denominator[name], step=step, train=False)
 
-                    logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=True)
-                step += 1
+                log_sample(
+                    logger=logger,
+                    x=x,
+                    y=y,
+                    pred=pred,
+                    is_train=False,
+                    step=step,
+                )
 
-            if logger is not None:
-                self.model.eval()
-                loss_numerator = defaultdict(float)
-                loss_denominator = defaultdict(float)
-                for x, y in tqdm(test_data_loader, desc="Testing", unit="batch", position=2):
-                    with torch.no_grad():
-                        x = apply_tpl(self.cast_fn, x)
-                        y = self.cast_fn(y) if not isinstance(y, tuple | list) else tuple(map(self.cast_fn, y))
-
-                        pred = self.model(x)
-                        losses = loss_fn(pred, y)
-                        loss = sum(losses) if isinstance(losses, tuple) else losses
-
-                        for name, loss in losses:
-                            loss_numerator[name] += loss.item()
-                            loss_denominator[name] += x.shape[0]
-
-                        x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                        pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
-                        y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-
-                        fns_args = zip(metric_fns, itertools.repeat((pred, y), len(metric_fns)), strict=True)
-                        metrics_values = [fn(pred, y) for fn, (pred, y) in fns_args]
-                        for name, value in metrics_values:
-                            loss_numerator[name] += value * x.shape[0]  # accumulate total metric value
-                            loss_denominator[name] += x.shape[0]
-
-                        loss_numerator["loss"] += loss.item() * x.shape[0]  # accumulate total loss
-                        loss_denominator["loss"] += x.shape[0]
-
-                for name, num in loss_numerator.items():
-                    logger.log_scalar(name, num / loss_denominator[name], step=step, train=False)
-
-                sample_idx = np.random.choice(x.shape[0], size=1)[0]
-                sample_x = x[sample_idx, ...].squeeze()
-                sample_y = y[sample_idx, ...].squeeze()
-                sample_pred = pred[sample_idx, ...].squeeze()
-                logger.log_triplet(sample_x, sample_y, sample_pred, "triplet", step=step, train=False)
+        # After all epochs save a copy in the models_dir
+        self.save(model_dir / "model.pt")
 
         return self
 
@@ -273,7 +391,6 @@ class UNet(base.BaseModel):
             pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, pred)
-
         if binarize:
             thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
             pred_paths = sorted(list(Path(out_dir).glob("*.tif")) + list(Path(out_dir).glob("*.pgm")))
@@ -286,14 +403,67 @@ class UNet(base.BaseModel):
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
 
+    def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
+        checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        checkpoints = list(checkpoint_dir.glob("*.pt"))
+
+        if len(checkpoints) >= n_checkpoints:
+            need_to_remove = (len(checkpoints) - n_checkpoints) + 1
+            checkpoints_to_remove = list(
+                sorted(
+                    checkpoints,
+                    # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+                    # we want to remove the oldest checkpoints so we sort by that.
+                    key=lambda p: p.stat().st_mtime,
+                )
+            )[:need_to_remove]
+
+            for ctr in checkpoints_to_remove:
+                ctr.unlink()
+
+        checkpoint_path = checkpoint_dir / f"checkpoint_{step}.pt"
+
+        self.step = step
+        self.save(checkpoint_path)
+
+    def load_checkpoint(self, checkpoint_dir: Path | str) -> None:
+        checkpoint_dir = Path(checkpoint_dir)
+        if not checkpoint_dir.exists():
+            raise FileNotFoundError(f"Checkpoint dir {str(checkpoint_dir)} does not exist")
+
+        checkpoints = list(checkpoint_dir.glob("checkpoint_*.pt"))
+
+        if len(checkpoints) == 0:
+            warnings.warn("No checkpoints found to load")
+            return
+
+        checkpoint = sorted(
+            checkpoints,
+            # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+            # we want to retrieve the latest checkpoint, so we reverse the sort
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[0]
+        print(f"Loading checkpoint: {str(checkpoint)}")
+        self.load(checkpoint)
+
     @override
     def save(self, path: str | Path) -> None:
-        save_path = Path(path) / (self.exp_id + ".pt" if self.exp_id else "model.pt")
-        torch.save(self.model.state_dict(), save_path)
+        path = Path(path)
+        torch.save(
+            {"model_state_dict": self.model.state_dict(), "step": getattr(self, "step", 0)},
+            path,
+        )
 
     @override
     def load(self, path: str | Path) -> None:
-        self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
+        path = Path(path)
+        # We are the ones saving and loading the model, so we trust the source.
+        data = torch.load(path)  # nosec B614
+        self.model.load_state_dict(data["model_state_dict"])
+        self.model.to(self.device)
+        self.step = data.get("step", 0)
 
 
 class UNetModule(nn.Module):
