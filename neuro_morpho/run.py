@@ -25,7 +25,7 @@ def config_str_to_dict(config_str: str) -> dict:
 @gin.configurable
 def run(
     model: base.BaseModel,
-    model_file: str,
+    model_file: str | Path,
     training_x_dir: str | Path,
     training_y_dir: str | Path,
     testing_x_dir: str | Path,
