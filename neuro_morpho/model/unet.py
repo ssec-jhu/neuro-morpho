@@ -257,7 +257,7 @@ class UNet(base.BaseModel):
 
     @override
     def predict_dir(
-        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler = None, binarize: bool = True
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler = None, binarize: bool = True, analyze: bool = True
     ) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
@@ -276,7 +276,7 @@ class UNet(base.BaseModel):
 
         if binarize:
             thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
-            pred_paths = sorted(list(Path(out_dir).glob("*.tif")) + list(Path(out_dir).glob("*.pgm")))
+            pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
             for pred_path in pred_paths:
                 pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED) / 255.0
                 pred_bin = pred.copy()
@@ -285,6 +285,10 @@ class UNet(base.BaseModel):
                 pred_bin = (pred_bin * 255).astype(np.uint8)
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
+            
+            if analyze:
+                pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
+                bin_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
 
     @override
     def save(self, path: str | Path) -> None:
