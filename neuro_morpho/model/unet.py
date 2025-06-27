@@ -29,6 +29,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
+from time import time
 from typing import Any
 
 import cv2
@@ -88,7 +89,13 @@ def train_step(
 
     # start = time()
     losses = loss_fn(pred, y)
+    # print("losses takes", time()-start)
+
+    # start = time()
     loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses[0], (tuple, list)) else losses[1]
+    # print("total loss takes", time()-start)
+
+    # start = time()
     loss.backward()
     # print("loss takes", time()-start)
 
@@ -232,17 +239,13 @@ class UNet(base.BaseModel):
             self.model.train()
             # x: b, 1, h, w
             # y: b, n_lbls, h, w
-            for x, y in map(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader):
+            for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader):
                 pred, losses = train_step(
                     model=self.model,
                     optimizer=optimizer,
                     loss_fn=loss_fn,
-                    metric_fns=metric_fns,
-                    logger=logger,
-                    log_every=log_every,
                     x=x,
                     y=y,
-                    step=step,
                 )
 
                 if logger is not None and step % log_every == 0:
@@ -264,6 +267,8 @@ class UNet(base.BaseModel):
                     log_losses(
                         logger=logger,
                         losses=losses,
+                        total_loss=sum(map(lambda l: l[1], losses)),
+                        is_train=True,
                         step=step,
                     )
 
@@ -276,6 +281,8 @@ class UNet(base.BaseModel):
                         step=step,
                     )
 
+                step += 1
+
             if logger is not None:
                 self.save_checkpoint(checkpoint_dir, n_checkpoints, step)
                 self.model.eval()
@@ -284,7 +291,7 @@ class UNet(base.BaseModel):
 
                 # x: b, 1, h, w
                 # y: b, n_lbls, h, w
-                for x, y in map(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader):
+                for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader):
                     pred, losses = test_step(
                         model=self.model,
                         loss_fn=loss_fn,
