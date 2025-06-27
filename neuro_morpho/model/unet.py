@@ -29,7 +29,6 @@ import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
-from time import time
 from typing import Any
 
 import cv2
@@ -267,7 +266,7 @@ class UNet(base.BaseModel):
                     log_losses(
                         logger=logger,
                         losses=losses,
-                        total_loss=sum(map(lambda l: l[1], losses)),
+                        total_loss=sum(map(lambda lss: lss[1], losses)),
                         is_train=True,
                         step=step,
                     )
