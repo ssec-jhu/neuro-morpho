@@ -30,7 +30,7 @@ def test_run_infer():
 
     input_tensor = np.random.rand(256, 256).astype(np.float32)
     cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
-    
+
     target_tensor = input_tensor.copy()
     target_tensor[target_tensor < 0.5] = 0
     target_tensor[target_tensor >= 0.5] = 1
