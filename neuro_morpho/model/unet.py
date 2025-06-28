@@ -398,7 +398,6 @@ class UNet(base.BaseModel):
             pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, pred)
-
         if binarize:
             thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
             pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
