@@ -39,6 +39,7 @@ def run(
     train: bool = False,
     infer: bool = False,
     binarize: bool = True,
+    analyze: bool = True,
     tile_size: int = 512,
     tile_assembly: str = "nn",
     image_size: tuple[int, int] = (3334, 3334),
@@ -104,4 +105,4 @@ def run(
                 raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
         tiler = Tiler(tile_size, tile_assembly)
         tiler.get_tiling_attributes(image_size)
-        model.predict_dir(testing_x_dir, model_out_y_dir, testing_y_dir, tiler, binarize)
+        model.predict_dir(testing_x_dir, model_out_y_dir, testing_y_dir, tiler, binarize, analyze)

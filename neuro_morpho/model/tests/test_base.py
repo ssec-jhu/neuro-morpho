@@ -14,7 +14,7 @@ def test_base_model_init_raises() -> None:
         model.fit("data_dir")
 
     with pytest.raises(NotImplementedError):
-        model.predict_dir("in_dir", "out_dir", "tar_dir", None, False)
+        model.predict_dir("in_dir", "out_dir", "tar_dir", None, False, False)
 
     with pytest.raises(NotImplementedError):
         model.predict(None)

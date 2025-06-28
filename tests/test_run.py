@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 
 import cv2
@@ -51,6 +52,7 @@ def test_run_infer():
         train=False,
         infer=True,
         binarize=True,
+        analyze=True,
         tile_size=64,
         tile_assembly="nn",
         image_size=(256, 256),

@@ -44,6 +44,7 @@ import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
 from neuro_morpho.model.threshold import ThresholdFinder
+from neuro_morpho.model.breaks_analyzer import BreaksAnalyzer
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
 
@@ -405,8 +406,26 @@ class UNet(base.BaseModel):
                 cv2.imwrite(pred_bin_path, pred_bin)
             
             if analyze:
+                breaks_analyzer = BreaksAnalyzer()
+                pred_bin_paths = sorted(list(Path(out_dir).glob("*_pred_bin.tif")) + list(Path(out_dir).glob("*_pred_bin.pgm")))
+                if not pred_bin_paths:
+                    raise ValueError("No predicted binary images found for analysis.")
                 pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
-                bin_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
+                if not pred_paths:
+                    raise ValueError("No predicted images found for analysis.")
+                if len(pred_bin_paths) != len(pred_paths):
+                    raise ValueError(
+                        "The number of predicted binary images does not match the number of predicted images. "
+                        "Analysis will be skipped."
+                    )
+                for pred_bin_path, pred_path in zip(pred_bin_paths, pred_paths):
+                    pred_bin_img = cv2.imread(str(pred_bin_path), cv2.IMREAD_UNCHANGED)
+                    pred_img = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
+                    breaks_analyzer.analyze_breaks(pred_bin_img, pred_img)
+                    # Save the patched image if needed
+                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                    cv2.imwrite(pred_bin_fixed_path, pred_img * 255)
+                    
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
