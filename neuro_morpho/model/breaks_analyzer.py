@@ -54,7 +54,7 @@ class BreaksAnalyzer:
                             if line_mask[pt2[1] + (i-1), pt2[0] + (j-1)] == 0: # Check if the pixel is not yet in line_mask
                                 kernel[i, j] = 1
 
-            val, coord = self.masked_max(predicted_image, pt2, kernel=kernel)
+            val, coord = self.masked_max(pred_img, pt2, kernel=kernel)
 
             if pred_bin_img[coord] == 255:  # If the pixel is white in the binary image
                 break
@@ -105,6 +105,8 @@ class BreaksAnalyzer:
                 )
             distances.append((i, label, min_distance, len(coords), closest_pair)) # Save results
         distances.sort(key=lambda x: (x[2], -x[3])) # sort by distance, then by size in descending order
+        if len(distances) == 0: # No breaks found in the predicted binary image.
+            return pred_bin_fixed_img
 
         shortest_distance = distances[0][2]
         added_coords = None
