@@ -55,7 +55,7 @@ ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
 
 def apply_tpl(fn: Callable, item: Any | tuple[Any, ...]) -> Any | tuple:
     """Apply a function to a an item or to all of the items in a tuple."""
-    return tuple(map(fn, item)) if isinstance(item, tuple) else fn(item)
+    return tuple(map(fn, item)) if isinstance(item, tuple | list) else fn(item)
 
 
 def cast_and_move(tensor: torch.Tensor, device: str) -> torch.Tensor:
@@ -180,7 +180,7 @@ class UNet(base.BaseModel):
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
         ).to(device)
-        self.cast_fn = functools.partial(cast_and_move, device=device)
+        self.cast_fn = functools.partial(apply_tpl, functools.partial(cast_and_move, device=device))
         self.device = device
         self.exp_id: str = None
 
