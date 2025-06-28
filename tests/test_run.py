@@ -23,26 +23,26 @@ def test_run_infer():
 
     testing_dir = Path("data/processed/test")
     training_dir = Path("data/processed/train")
-    model_out_y_dir = Path("data/output")
+    model_out_y_dir = Path("data/output/test")
 
-    for dir_path, subdir in itertools.product([testing_dir, training_dir], ["imgs", "lbls"]):
+    for dir_path, subdir in itertools.product([testing_dir, training_dir], ["test_imgs", "test_lbls"]):
         (dir_path / subdir).mkdir(parents=True, exist_ok=True)
 
-    input_tensor = np.random.rand(1, 1, 256, 256).astype(np.float32)
-    cv2.imwrite(testing_dir / "imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
+    input_tensor = np.random.rand(256, 256).astype(np.float32)
+    cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
     
     target_tensor = input_tensor.copy()
     target_tensor[target_tensor < 0.5] = 0
     target_tensor[target_tensor >= 0.5] = 1
-    cv2.imwrite(testing_dir / "lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
+    cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
 
     run.run(
         model=unet_model,
         model_file=None,
         training_x_dir=training_dir / "imgs",
         training_y_dir=training_dir / "lbls",
-        testing_x_dir=testing_dir / "imgs",
-        testing_y_dir=testing_dir / "lbls",
+        testing_x_dir=testing_dir / "test_imgs",
+        testing_y_dir=testing_dir / "test_lbls",
         model_save_dir="models/",
         model_out_y_dir=model_out_y_dir,
         model_stats_output_dir="data/stats/model/",
