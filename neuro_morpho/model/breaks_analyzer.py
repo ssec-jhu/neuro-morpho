@@ -11,7 +11,7 @@ class BreaksAnalyzer:
     ):
         super().__init__()
 
-    def masked_max(image, point, kernel):
+    def masked_max(self, image, point, kernel) -> tuple[int, tuple[int, int]]:
         # kernel should be a 3x3 array of 0s and 1s
         assert kernel.shape == (3, 3), "Kernel must be 3x3"
         x, y = point
@@ -32,7 +32,7 @@ class BreaksAnalyzer:
 
         return max_val, max_coord
 
-    def create_connecting_line(self, line_mask, pt1, pt2, pred_bin_img, pred_img):
+    def create_connecting_line(self, line_mask, pt1, pt2, pred_bin_img, pred_img) -> bool:
         """Draw a line on the mask wrt predicted_image."""
         # Find the direction from pt1 on main branch to pt2 on the branch being connected
         vector = (pt1[0] - pt2[0], pt1[1] - pt2[1])
@@ -54,7 +54,7 @@ class BreaksAnalyzer:
                             ):  # Check if the pixel is not yet in line_mask
                                 kernel[i, j] = 1
 
-            val, coord = self.masked_max(pred_img, pt2, kernel=kernel)
+            val, coord = self.masked_max(pred_img, pt2, kernel)
 
             if pred_bin_img[coord] == 255:  # If the pixel is white in the binary image
                 break

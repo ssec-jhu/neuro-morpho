@@ -28,13 +28,27 @@ def test_run_infer():
     for dir_path, subdir in itertools.product([testing_dir, training_dir], ["test_imgs", "test_lbls"]):
         (dir_path / subdir).mkdir(parents=True, exist_ok=True)
 
-    input_tensor = np.random.rand(256, 256).astype(np.float32)
-    cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
+    # input_tensor = np.random.rand(256, 256).astype(np.float32)
+    # cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
+    # target_tensor = input_tensor.copy()
+    # target_tensor[target_tensor < 0.5] = 0
+    # target_tensor[target_tensor >= 0.5] = 1
+    # cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
 
+    input_tensor = np.zeros((256, 256), dtype=np.float32)
+    # Draw top-left to bottom-right (↘)
+    np.fill_diagonal(input_tensor, 1.0)  # Draw top-left to bottom-right (↘)
+    np.fill_diagonal(np.fliplr(input_tensor), 1.0)
+    # Cut a 4x4 black window in the center
+    center_x, center_y = input_tensor.shape[0] // 2, input_tensor.shape[1] // 2
+    half_window = 2  # because 4x4 window -> 2 pixels in each direction from center
+    input_tensor[center_y - half_window : center_y + half_window, center_x - half_window : center_x + half_window] = 0.0
     target_tensor = input_tensor.copy()
-    target_tensor[target_tensor < 0.5] = 0
-    target_tensor[target_tensor >= 0.5] = 1
     cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
+
+    # Apply strong Gaussian blur
+    input_tensor = cv2.GaussianBlur(input_tensor, ksize=(3, 3), sigmaX=2)
+    cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
 
     run.run(
         model=unet_model,
@@ -60,3 +74,5 @@ def test_run_infer():
 
     assert Path(model_out_y_dir).exists()
     assert (Path(model_out_y_dir) / Path("test_img_pred.tif")).exists()
+    assert (Path(model_out_y_dir) / Path("test_img_pred_bin.tif")).exists()
+    assert (Path(model_out_y_dir) / Path("test_img_pred_bin_fixed.tif")).exists()
