@@ -404,6 +404,28 @@ class UNet(base.BaseModel):
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
 
+            if analyze:
+                breaks_analyzer = BreaksAnalyzer()
+                pred_bin_paths = sorted(
+                    list(Path(out_dir).glob("*_pred_bin.tif")) + list(Path(out_dir).glob("*_pred_bin.pgm"))
+                )
+                if not pred_bin_paths:
+                    raise ValueError("No predicted binary images found for analysis.")
+                pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
+                if not pred_paths:
+                    raise ValueError("No predicted images found for analysis.")
+                if len(pred_bin_paths) != len(pred_paths):
+                    raise ValueError(
+                        "The number of predicted binary images does not match the number of predicted images. "
+                        "Analysis will be skipped."
+                    )
+                for pred_bin_path, pred_path in zip(pred_bin_paths, pred_paths, strict=False):
+                    pred_bin_img = cv2.imread(str(pred_bin_path), cv2.IMREAD_UNCHANGED)
+                    pred_img = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
+                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin_img, pred_img).copy()
+                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
