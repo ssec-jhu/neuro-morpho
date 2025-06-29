@@ -28,16 +28,8 @@ def test_run_infer():
     for dir_path, subdir in itertools.product([testing_dir, training_dir], ["test_imgs", "test_lbls"]):
         (dir_path / subdir).mkdir(parents=True, exist_ok=True)
 
-    # input_tensor = np.random.rand(256, 256).astype(np.float32)
-    # cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
-    # target_tensor = input_tensor.copy()
-    # target_tensor[target_tensor < 0.5] = 0
-    # target_tensor[target_tensor >= 0.5] = 1
-    # cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
-
     input_tensor = np.zeros((256, 256), dtype=np.float32)
-    # Draw top-left to bottom-right (↘)
-    np.fill_diagonal(input_tensor, 1.0)  # Draw top-left to bottom-right (↘)
+    np.fill_diagonal(input_tensor, 1.0)
     np.fill_diagonal(np.fliplr(input_tensor), 1.0)
     # Cut a 4x4 black window in the center
     center_x, center_y = input_tensor.shape[0] // 2, input_tensor.shape[1] // 2
@@ -47,7 +39,7 @@ def test_run_infer():
     cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
 
     # Apply strong Gaussian blur
-    input_tensor = cv2.GaussianBlur(input_tensor, ksize=(3, 3), sigmaX=2)
+    input_tensor = cv2.GaussianBlur(input_tensor, ksize=(3, 3), sigmaX=1)
     cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
 
     run.run(
@@ -69,7 +61,7 @@ def test_run_infer():
         analyze=True,
         tile_size=64,
         tile_assembly="nn",
-        image_size=(256, 256),
+        image_size=input_tensor.shape,
     )
 
     assert Path(model_out_y_dir).exists()

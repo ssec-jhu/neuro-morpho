@@ -428,10 +428,9 @@ class UNet(base.BaseModel):
                 for pred_bin_path, pred_path in zip(pred_bin_paths, pred_paths, strict=False):
                     pred_bin_img = cv2.imread(str(pred_bin_path), cv2.IMREAD_UNCHANGED)
                     pred_img = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
-                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin_img, pred_img)
-                    # Save the fixed image if needed
+                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin_img, pred_img).copy()
                     pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
-                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img * 255)
+                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)
