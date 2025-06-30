@@ -40,13 +40,13 @@
             dash_indices = find(Neuron.FileName == '-');
             idx = dash_indices(3);
             if (params.Prune == 1)
-                skel_filename = strcat(Neuron.FilePath,'/Skeleton', ...
+                skel_filename = strcat(Neuron.FilePath,'/../output/matlab/Skeleton', ...
                     Neuron.FileName(idx:end), '_from', Neuron.FileName(1:idx-1), '.tif');
             else
-                skel_filename = strcat(Neuron.FilePath,'/Skeleton', ...
+                skel_filename = strcat(Neuron.FilePath,'/../output/matlab/Skeleton', ...
                     Neuron.FileName(idx:end), '_from', Neuron.FileName(1:idx-1), '-nopruning.tif');
             end
-            %fprintf('%s\n', skel_filename);
+            fprintf('%s\n', skel_filename);
             imwrite(skel, skel_filename);
             if (params.SaveSWC == 0 && params.SaveWorkspace == 0)
                 return;
