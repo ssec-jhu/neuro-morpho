@@ -311,22 +311,22 @@ params.Fine=1;
 params.Soma=[1667,1667];%%%%in pixel
 params.persislen_threshold=10.0/params.pixelsize;
 params.Prune = 0;
-params.SaveBinary = 0;
+params.SaveBinary = 1;
 params.SaveSWC = 0;
-params.SaveWorkspace = 1;
+params.SaveWorkspace = 0;
 
 for sbr=1:5
     Real = struct();
-    for cycle=1:10
+    for cycle=1:100
         fprintf('SBR %d, Cycle %d:\n', sbr, cycle)
         p=parpool('local',N_neurons);
         parfor ii=1:N_neurons
         %for ii=1:N_neurons
             cntr = N_neurons * (cycle - 1) + ii;
-            %filename=strcat(['../../../../OneDrive/NeuralMorphology/' ...
-            filename=strcat(['../../../' ...
-                'Simulations_16bit_Size3334/images/Realistic-SBR-'],num2str(sbr), ...
-                '-Sample-',num2str(cntr),'-time-100.00.pgm');
+            %filen4ame=strcat(['../../../../OneDrive/NeuralMorphology/' ...
+            filename=strcat(['/home/idies/workspace/ssec_neural_morphology/' ...
+                'SimulationsNew_Tif3334/images/Realistic-SBR-'],num2str(sbr), ...
+                '-Sample-',num2str(cntr),'-time-100.00.tif');
             fprintf('%s\n', filename);
             Im=imread(filename);
             BW=make_binary(Im,params.WindowSize,params.WindowType);
