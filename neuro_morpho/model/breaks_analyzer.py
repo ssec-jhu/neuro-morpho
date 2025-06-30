@@ -2,17 +2,14 @@ import cv2
 import numpy as np
 from scipy.spatial.distance import cdist
 
+MAX_FIXABLE_DISTANCE = 6  # Maximum distance to consider a break fixable
+
 
 class BreaksAnalyzer:
     """Helper class to analyze and patch the breaks in predicted binary images."""
 
-    def __init__(
-        self,
-    ):
-        super().__init__()
-
-    def masked_max(self, image, point, kernel) -> tuple[int, tuple[int, int]]:
-        # kernel should be a 3x3 array of 0s and 1s
+    def masked_max(self, image: np.ndarray, point: tuple[int, int], kernel: np.ndarray) -> tuple[int, int]:
+        """Finds maximal value and its coordinate on the image pixels covered by kernel mask."""
         assert kernel.shape == (3, 3), "Kernel must be 3x3"
         x, y = point
         h, w = image.shape
@@ -30,40 +27,51 @@ class BreaksAnalyzer:
                             max_val = val
                             max_coord = (ny, nx)
 
-        return max_val, max_coord
+        return max_coord
 
-    def create_connecting_line(self, line_mask, pt1, pt2, pred_bin_img, pred_img) -> bool:
+    def create_connecting_line(
+        self,
+        line_mask: np.ndarray,
+        pt1: tuple[int, int],
+        pt2: tuple[int, int],
+        pred_bin_img: np.ndarray,
+        pred_img: np.ndarray,
+    ) -> bool:
         """Draw a line on the mask wrt predicted_image."""
         # Find the direction from pt1 on main branch to pt2 on the branch being connected
         vector = (pt1[0] - pt2[0], pt1[1] - pt2[1])
-        while True:
-            # Create the kernel for the current step
-            kernel = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]], dtype=np.uint8)
+        length_cntr = 0
+        line_connected_flag = False
+        while (
+            not line_connected_flag and length_cntr < 2 * MAX_FIXABLE_DISTANCE
+        ):  # Limit iterations to prevent infinite loop
+            kernel = np.zeros((3, 3), dtype=np.uint8)  # Create the kernel for the current step
+            # Check the 8 surrounding pixels (excluding the center pixel)
             for i in range(3):
                 for j in range(3):
                     if i == 1 and j == 1:  # Skip the center pixel
                         continue
-                    if (j - 1) * vector[0] + (i - 1) * vector[
-                        1
-                    ] > 0:  # Check if the pixel is in the direction of the vector
-                        if (
-                            0 <= pt2[1] + (i - 1) < line_mask.shape[0] and 0 <= pt2[0] + (j - 1) < line_mask.shape[1]
-                        ):  # Check if the pixel is within bounds
-                            if (
-                                line_mask[pt2[1] + (i - 1), pt2[0] + (j - 1)] == 0
-                            ):  # Check if the pixel is not yet in line_mask
+                    if (j - 1) * vector[0] + (i - 1) * vector[1] > 0:
+                        # Check if the pixel is in the direction of the vector
+                        if 0 <= pt2[1] + (i - 1) < line_mask.shape[0] and 0 <= pt2[0] + (j - 1) < line_mask.shape[1]:
+                            # Check if the pixel is within bounds
+                            if line_mask[pt2[1] + (i - 1), pt2[0] + (j - 1)] == 0:
+                                # Check if the pixel is not yet in line_mask
                                 kernel[i, j] = 1
 
-            val, coord = self.masked_max(pred_img, pt2, kernel)
+            coord = self.masked_max(pred_img, pt2, kernel)
 
             if pred_bin_img[coord] == 255:  # If the pixel is white in the binary image
-                break
-            # Add the point to the mask
+                line_connected_flag = True  # Stop if we reached the white pixel
+                continue
+
+            # Add the point to the mask and advance the counter
             line_mask[coord] = 255
             pt2 = (coord[1], coord[0])
             vector = (pt1[0] - pt2[0], pt1[1] - pt2[1])
+            length_cntr += 1
 
-        return True
+        return line_connected_flag
 
     def analyze_breaks(self, pred_bin_img: np.ndarray, pred_img: np.ndarray) -> np.ndarray:
         """Find the potential break places in hard prediction (dendrite binary image) and patch it."""
@@ -136,47 +144,21 @@ class BreaksAnalyzer:
                 distance2CurrentComp = distances[0][2]
                 added_coords = None  # Reset added_coords
 
-            if distance2CurrentComp >= 6:  # If the distance is too big, stop merging
+            if distance2CurrentComp >= MAX_FIXABLE_DISTANCE:  # If the distance is too big, stop merging
                 break
             min_dist_indx = distances[0][0]
             closest_pair = distances[0][4]
-            # print(
-            #     f"Distance: {distance2CurrentComp:.2f}\t Size: {distances[0][3]}\t Closest pair: {closest_pair[0]} ↔ \
-            #         {closest_pair[1]}"
-            # )
-
-            # output_image = cv2.cvtColor(pred_bin_fixed_img, cv2.COLOR_GRAY2BGR)
-            # for y, x in components[0][1]:
-            #     output_image[y, x] = [0, 255, 0]  # Green (BGR) - main branch
-            # for y, x in components[min_dist_indx][1]:
-            #     output_image[y, x] = [0, 0, 255]  # Red (BGR) - branch being connected
-            # cv2.imshow(os.path.basename(binary_filename), output_image)
-            # cv2.waitKey(0)
 
             # Draw line on a temp image and get white pixel coords
             line_mask = np.zeros_like(pred_bin_fixed_img)
             pt1 = closest_pair[0][::-1]  # (x, y)
             pt2 = closest_pair[1][::-1]
-            result = self.create_connecting_line(line_mask, pt1, pt2, pred_bin_fixed_img, pred_img)
-            if not result:
+            line_connected_flag = self.create_connecting_line(line_mask, pt1, pt2, pred_bin_fixed_img, pred_img)
+            if not line_connected_flag:
                 cv2.line(line_mask, pt1, pt2, color=255, thickness=1)
             pred_bin_fixed_img = cv2.bitwise_or(
                 pred_bin_fixed_img, line_mask
-            )  # Add the connection to the output binary imag
-
-            # for y, x in zip(*line_mask.nonzero()):
-            #     output_image[y, x] = [255, 0, 0]  # Blue (BGR) - line connecting them
-            # all_coords = np.vstack((components[min_dist_indx][1], np.column_stack(line_mask.nonzero())))
-            # min_y, min_x = np.min(all_coords, axis=0)
-            # max_y, max_x = np.max(all_coords, axis=0)
-            # pad = 20
-            # min_y = max(min_y - pad, 0)
-            # min_x = max(min_x - pad, 0)
-            # max_y = min(max_y + pad, output_image.shape[0] - 1)
-            # max_x = min(max_x + pad, output_image.shape[1] - 1)
-            # cv2.imshow(os.path.basename(binary_filename), output_image[min_y:max_y+1, min_x:max_x+1])
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            )  # Add the connection to the output binary image
 
             # Update the coordinates of main branch (sorted_components[0])
             line_coords = np.column_stack(np.where(line_mask == 255))  # (y, x)
@@ -206,22 +188,5 @@ class BreaksAnalyzer:
                         line_coords,  # Coords of the line connecting them
                     )
                 )
-
-        # target_image = cv2.imread(target_filename, cv2.IMREAD_GRAYSCALE)
-        # # diff_target = np.stack([pred_bin_fixed_img] * 3, axis=-1).astype(np.uint8)
-        # diff_target[(pred_bin_fixed_img == 255) & (target_image == 0)] = \
-        #     [0, 255, 0]  # Green: appears in fixed, missing in target
-        # diff_target[(pred_bin_fixed_img == 0) & (target_image == 255)] = \
-        #     [255, 0, 0]  # Red: missing in fixed, appears in target
-        # diff_target_filename = binary_filename.replace("_pred_bin.tif", "_pred_bin_fixedimp_diff_tar.tif")
-        # cv2.imwrite(diff_target_filename, cv2.cvtColor(diff_target, cv2.COLOR_RGB2BGR))
-        #
-        # diff_bin = np.stack([pred_bin_fixed_img] * 3, axis=-1).astype(np.uint8)
-        # diff_bin[(pred_bin_fixed_img == 255) & (pred_bin_img == 0)] = \
-        #     [0, 255, 0]  # Green: appears in fixed, missing in orig binary
-        # diff_bin[(pred_bin_fixed_img == 0) & (pred_bin_img == 255)] = \
-        #     [255, 0, 0]  # Red: missing in fixed, appears in orig binary
-        # diff_bin_filename = binary_filename.replace("_pred_bin.tif", "_pred_bin_fixedimp_diff_bin.tif")
-        # cv2.imwrite(diff_bin_filename, cv2.cvtColor(diff_bin, cv2.COLOR_RGB2BGR))
 
         return pred_bin_fixed_img
