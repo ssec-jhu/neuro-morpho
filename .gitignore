@@ -168,6 +168,26 @@ cython_debug/
 # File system
 .DS_Store
 
-# Matlab files
-*.mat
-*.asv
+# Model files
+*.pt
+
+# Image files
+*.png
+*.tif
+*.pgm
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+
+# Report files
+*.xlsx
+*.csv
+
+# JSON files
+*.json
+
+# data files
+*.dat
+*.swc
