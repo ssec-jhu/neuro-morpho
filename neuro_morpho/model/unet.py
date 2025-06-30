@@ -43,6 +43,7 @@ from typing_extensions import override
 import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
+from neuro_morpho.model.breaks_analyzer import BreaksAnalyzer
 from neuro_morpho.model.threshold import ThresholdFinder
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
@@ -375,7 +376,13 @@ class UNet(base.BaseModel):
 
     @override
     def predict_dir(
-        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler = None, binarize: bool = True
+        self,
+        in_dir: str | Path,
+        out_dir: str | Path,
+        tar_dir: str | Path,
+        tiler: Tiler = None,
+        binarize: bool = True,
+        analyze: bool = True,
     ) -> None:
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
@@ -393,7 +400,7 @@ class UNet(base.BaseModel):
             cv2.imwrite(pred_path, pred)
         if binarize:
             thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
-            pred_paths = sorted(list(Path(out_dir).glob("*.tif")) + list(Path(out_dir).glob("*.pgm")))
+            pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
             for pred_path in pred_paths:
                 pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED) / 255.0
                 pred_bin = pred.copy()
@@ -402,6 +409,28 @@ class UNet(base.BaseModel):
                 pred_bin = (pred_bin * 255).astype(np.uint8)
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
+
+            if analyze:
+                breaks_analyzer = BreaksAnalyzer()
+                pred_bin_paths = sorted(
+                    list(Path(out_dir).glob("*_pred_bin.tif")) + list(Path(out_dir).glob("*_pred_bin.pgm"))
+                )
+                if not pred_bin_paths:
+                    raise ValueError("No predicted binary images found for analysis.")
+                pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
+                if not pred_paths:
+                    raise ValueError("No predicted images found for analysis.")
+                if len(pred_bin_paths) != len(pred_paths):
+                    raise ValueError(
+                        "The number of predicted binary images does not match the number of predicted images. "
+                        "Analysis will be skipped."
+                    )
+                for pred_bin_path, pred_path in zip(pred_bin_paths, pred_paths, strict=False):
+                    pred_bin_img = cv2.imread(str(pred_bin_path), cv2.IMREAD_UNCHANGED)
+                    pred_img = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
+                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin_img, pred_img).copy()
+                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         checkpoint_dir = Path(checkpoint_dir)

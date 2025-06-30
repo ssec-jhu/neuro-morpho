@@ -25,7 +25,7 @@ class BaseModel:
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
     def predict_dir(
-        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool, analyze: bool
     ) -> None:
         """Predict the output for all images in the given directory.
 
@@ -36,6 +36,7 @@ class BaseModel:
             tar_dir (str|Path): The target directory to be used in case of threshold calculation
             tiler (Tiler): The tiler object to use for tiling the input data
             binarize (bool): Whether to binarize the output (soft prediction) or not
+            analyze (bool): Whether to analyze and fix potential breaks in the binarized output (hard prediction) or not
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
 
