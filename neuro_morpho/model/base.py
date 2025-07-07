@@ -4,6 +4,8 @@ from pathlib import Path
 
 import numpy as np
 
+from neuro_morpho.model.tiler import Tiler
+
 ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 
 
@@ -22,16 +24,19 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
-    def predict_dir(self, in_dir: str | Path, out_dir: str | Path) -> np.ndarray:
+    def predict_dir(
+        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool, analyze: bool
+    ) -> None:
         """Predict the output for all images in the given directory.
 
         Args:
             in_dir (str|Path): The directory containing the data files to predict
-                images should have the size (n_samples, width, height, channels)
+                images should have the size (n_samples, channels, width, height)
             out_dir (str|Path): The directory to save the output
-
-        Returns:
-            np.ndarray: The predicted output
+            tar_dir (str|Path): The target directory to be used in case of threshold calculation
+            tiler (Tiler): The tiler object to use for tiling the input data
+            binarize (bool): Whether to binarize the output (soft prediction) or not
+            analyze (bool): Whether to analyze and fix potential breaks in the binarized output (hard prediction) or not
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
 
@@ -39,23 +44,25 @@ class BaseModel:
         """Predict the output given the input x
 
         Args:
-            x (np.ndarray): The input data should be size of (n_samples, width, height, channels)
+            x (np.ndarray): The input data should be size of (n_samples, channels, width, height)
+            thresh (float): The threshold to use for the prediction
 
         Returns:
             np.ndarray: The predicted output
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict"))
 
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        """Predict a soft version of the output given the input x,
+    def predict_proba(self, x: np.ndarray, tiler: Tiler) -> np.ndarray:
+        """Predict a soft version of the output given the input x and tiling params as an option
 
         Args:
-            x (np.ndarray): The input data should be size of (n_samples, width, height, channels)
+            x (np.ndarray): The input data should be size of (n_samples, channels, width, height)
+            tiler (Tiler): The tiler object to use for tiling the input data
 
         Returns:
             np.ndarray: The predicted output
         """
-        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict"))
+        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_proba"))
 
     def save(self, path: Path | str) -> None:
         """Save the model to the given path.

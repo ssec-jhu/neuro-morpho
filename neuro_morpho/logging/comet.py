@@ -10,13 +10,14 @@ from typing_extensions import override
 from neuro_morpho.logging import base
 
 
-@gin.configurable(allowlist=["api_key", "project_name", "workspace", "disabled"])
+@gin.configurable(allowlist=["api_key", "experiment_key", "project_name", "workspace", "disabled"])
 class CometLogger(base.Logger):
     """Logger class for logging metrics and images to Comet.ml."""
 
     def __init__(
         self,
         api_key: str | None = None,
+        experiment_key: str | None = None,
         project_name: str | None = None,
         workspace: str | None = None,
         auto_param_logging: bool = False,
@@ -28,13 +29,16 @@ class CometLogger(base.Logger):
         Args:
             experiment (comet_ml.Experiment): The comet.ml experiment object.
         """
-        self.experiment = comet_ml.Experiment(
+        self.experiment = comet_ml.start(
             api_key=api_key or os.getenv("COMET_API_KEY"),
             project_name=project_name,
             workspace=workspace,
-            auto_param_logging=auto_param_logging,
-            auto_metric_logging=auto_metric_logging,
-            disabled=disabled,
+            experiment_key=experiment_key,
+            experiment_config=comet_ml.ExperimentConfig(
+                auto_param_logging=auto_param_logging,
+                auto_metric_logging=auto_metric_logging,
+                disabled=disabled,
+            ),
         )
 
     @override
@@ -57,8 +61,11 @@ class CometLogger(base.Logger):
         ax_y.imshow(lbl_img, cmap="Greys_r")
         ax_y.set_title("Label")
         ax_y.axis("off")
-        self.experiment.log_figure(figure=fig, figure_name=f"{name}", step=step)
-        plt.savefig(f"{name}-{step}.png")
+
+        ctx = self.experiment.train if train else self.experiment.test
+        with ctx():
+            self.experiment.log_figure(figure=fig, figure_name=f"{name}", step=step)
+        plt.close(fig)
 
     @override
     def log_parameters(self, metrics: dict[str, str | float | int]) -> None:
