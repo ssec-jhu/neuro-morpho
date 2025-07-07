@@ -1,34 +1,65 @@
 """Test the neuro_morpho model loss functions."""
 
+import pytest
 import torch
 
 from neuro_morpho.model import loss
 
+ONES = torch.ones((1, 1, 2, 2), dtype=torch.float32)
+ZEROS = torch.zeros((1, 1, 2, 2), dtype=torch.float32)
+HALF = torch.ones((1, 1, 2, 2), dtype=torch.float32) * 0.5
 
-def test_weighted_focal_loss() -> None:
+
+@pytest.mark.parametrize(
+    ("inputs", "targets"),
+    [
+        (ONES, ONES),
+        (ZEROS, ZEROS),
+        (HALF, HALF),
+        (ONES, ZEROS),
+        (ZEROS, ONES),
+        (HALF, ONES),
+        (HALF, ZEROS),
+    ]
+)
+def test_weighted_focal_loss(inputs: torch.Tensor, targets: torch.Tensor) -> None:
     """Test the WeightedFocalLoss class."""
 
     loss_fn = loss.WeightedFocalLoss(alpha=0.25, gamma=2)
     inputs = torch.ones((1, 1, 2, 2), dtype=torch.float32) * 0.5
-    targets = torch.ones((1, 1, 2, 2), dtype=torch.float32)
 
     name_loss, loss_value = loss_fn(inputs, targets)
     assert name_loss == "weighted_focal_loss"
     assert isinstance(loss_value, torch.Tensor)
     assert len(loss_value.shape) == 0
+    assert not torch.isnan(loss_value).any()
+    assert loss_value.item() >= 0.0
 
 
-def test_dice_loss() -> None:
+@pytest.mark.parametrize(
+    ("inputs", "targets"),
+    [
+        (ONES, ONES),
+        (ZEROS, ZEROS),
+        (HALF, HALF),
+        (ONES, ZEROS),
+        (ZEROS, ONES),
+        (HALF, ONES),
+        (HALF, ZEROS),
+    ]
+)
+def test_dice_loss(inputs: torch.Tensor, targets: torch.Tensor) -> None:
     """Test the DiceLoss class."""
 
     loss_fn = loss.DiceLoss(smooth=1.0)
     preds = torch.ones((1, 1, 2, 2), dtype=torch.float32) * 0.5
-    targets = torch.ones((1, 1, 2, 2), dtype=torch.float32)
 
     name_loss, loss_value = loss_fn(preds, targets)
     assert name_loss == "dice_loss"
     assert isinstance(loss_value, torch.Tensor)
     assert len(loss_value.shape) == 0
+    assert not torch.isnan(loss_value).any()
+    assert loss_value.item() >= 0.0
 
 
 def test_weighted_map() -> None:
@@ -45,6 +76,8 @@ def test_weighted_map() -> None:
     assert name_loss == "weighted_focal_loss"
     assert isinstance(loss_value, torch.Tensor)
     assert len(loss_value.shape) == 0
+    assert not torch.isnan(loss_value).any()
+    assert loss_value.item() >= 0.0
 
 
 def test_combined_loss() -> None:
@@ -62,3 +95,7 @@ def test_combined_loss() -> None:
     assert len(losses) == 2
     assert names[0] == "weighted_focal_loss"
     assert names[1] == "dice_loss"
+    assert not torch.isnan(losses[0]).any()
+    assert not torch.isnan(losses[1]).any()
+    assert losses[0].item() >= 0.0
+    assert losses[1].item() >= 0.0
