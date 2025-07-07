@@ -12,7 +12,7 @@ import neuro_morpho.data.data_loader
 import neuro_morpho.model.transforms
 
 
-IN_SIZE = (1024, 1024)  # Size of the input images
+IN_SIZE = (512, 512)  # Size of the input images
 
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
@@ -67,8 +67,8 @@ ynorm/v2.Compose.transforms = [
 
 
 
-train/build_dataloader.x_dir = "data/processed/train/imgs"
-train/build_dataloader.y_dir = "data/processed/train/lbls"
+train/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
+train/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 train/build_dataloader.batch_size = 2
 train/build_dataloader.num_workers = 0
 train/build_dataloader.shuffle = True
@@ -77,8 +77,8 @@ train/build_dataloader.x_norm = @Standardize()
 train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
 
 
-test/build_dataloader.x_dir = "data/processed/test/imgs"
-test/build_dataloader.y_dir = "data/processed/test/lbls"
+test/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
+test/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
 test/build_dataloader.batch_size = 2
 test/build_dataloader.num_workers = 0
 test/build_dataloader.shuffle = True
@@ -97,20 +97,17 @@ CombinedLoss.losses = (
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
 
-# ChannelAttention.ratio = 2
 ChannelAttention.ratio = 16
 
 UNet.n_input_channels = 1
 UNet.n_output_channels = 1
-# UNet.encoder_channels = [4, 8, 16, 32, 64]
-# UNet.decoder_channels = [32, 16, 8, 4]
 UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
 # UNet.device = "cuda"
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
-UNet.fit.epochs = 5
+UNet.fit.epochs =   10
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
@@ -140,16 +137,16 @@ skeleton_analysis.stat_fns = [
     ("Total Length", @calculate_total_length),
 ]
 
-
-run.train = False
-run.infer = True
+run.model_file = None
+run.train = True
+run.infer = False
 run.binarize = True
 run.analyze = False
 run.model = @UNet()
-run.training_x_dir = "data/processed/train/imgs"
-run.training_y_dir = "data/processed/train/lbls"
-run.testing_x_dir = "data/processed/test/imgs"
-run.testing_y_dir = "data/processed/test/lbls"
+run.training_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
+run.training_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
+run.testing_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
+run.testing_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
 run.model_save_dir = "models"
 run.model_out_y_dir = "data/output"
 run.model_stats_output_dir = "data/stats/model"

@@ -12,3 +12,4 @@ scikit-learn==1.7.0
 scipy==1.15.2
 skan==0.12.2
 tox==4.24.1
+ipykernel==6.29.5
