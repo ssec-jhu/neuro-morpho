@@ -282,7 +282,10 @@ class UNet(base.BaseModel):
             # x: b, 1, h, w
             # y: b, n_lbls, h, w
             training_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader)
-            for x, y in maybe_pbar(training_iter, desc="Training", unit="batch", position=1, steps_bar=steps_bar):
+            training_iter = (
+                tqdm(training_iter, desc="Training", unit="batch", position=1) if steps_bar else training_iter
+            )
+            for x, y in training_iter:
                 pred, losses = train_step(
                     model=self.model,
                     optimizer=optimizer,
@@ -335,7 +338,8 @@ class UNet(base.BaseModel):
                 # x: b, 1, h, w
                 # y: b, n_lbls, h, w
                 test_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader)
-                for x, y in maybe_pbar(test_iter, desc="Testing", unit="batch", position=2, steps_bar=steps_bar):
+                test_iter = tqdm(test_iter, desc="Testing", unit="batch", position=2) if steps_bar else test_iter
+                for x, y in test_iter:
                     pred, losses = test_step(
                         model=self.model,
                         loss_fn=loss_fn,
