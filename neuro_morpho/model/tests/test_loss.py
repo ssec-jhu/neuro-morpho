@@ -20,7 +20,7 @@ HALF = torch.ones((1, 1, 2, 2), dtype=torch.float32) * 0.5
         (ZEROS, ONES),
         (HALF, ONES),
         (HALF, ZEROS),
-    ]
+    ],
 )
 def test_weighted_focal_loss(inputs: torch.Tensor, targets: torch.Tensor) -> None:
     """Test the WeightedFocalLoss class."""
@@ -46,7 +46,7 @@ def test_weighted_focal_loss(inputs: torch.Tensor, targets: torch.Tensor) -> Non
         (ZEROS, ONES),
         (HALF, ONES),
         (HALF, ZEROS),
-    ]
+    ],
 )
 def test_dice_loss(inputs: torch.Tensor, targets: torch.Tensor) -> None:
     """Test the DiceLoss class."""
