@@ -80,25 +80,14 @@ def train_step(
     """Perform a single training step."""
     optimizer.zero_grad()
 
-    # start = time()
     pred = model(x)
-    # print("pred takes", time()-start)
 
-    # start = time()
     losses = loss_fn(pred, y)
-    # print("losses takes", time()-start)
-
-    # start = time()
     loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses[0], (tuple, list)) else losses[1]
-    # print("total loss takes", time()-start)
 
-    # start = time()
     loss.backward()
-    # print("loss takes", time()-start)
 
-    # start = time()
     optimizer.step()
-    # print("opt step takes", time()-start)
 
     return pred, losses
 
@@ -197,6 +186,7 @@ class UNet(base.BaseModel):
             "init_step",
             "model_id",
             "models_dir",
+            "steps_bar",
         ]
     )
     def fit(
@@ -217,6 +207,7 @@ class UNet(base.BaseModel):
         model_id: str | None = None,
         models_dir: str | Path = Path("models"),
         n_checkpoints: int = 5,  # Number of checkpoints to keep
+        steps_bar: bool = True,  # Show progress bar during training/testing
     ) -> base.BaseModel:
         model_id = model_id or str(uuid.uuid4()).replace("-", "")
 
@@ -236,7 +227,11 @@ class UNet(base.BaseModel):
             self.model.train()
             # x: b, 1, h, w
             # y: b, n_lbls, h, w
-            for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader):
+            training_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), train_data_loader)
+            training_iter = (
+                tqdm(training_iter, desc="Training", unit="batch", position=1) if steps_bar else training_iter
+            )
+            for x, y in training_iter:
                 pred, losses = train_step(
                     model=self.model,
                     optimizer=optimizer,
@@ -288,7 +283,9 @@ class UNet(base.BaseModel):
 
                 # x: b, 1, h, w
                 # y: b, n_lbls, h, w
-                for x, y in itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader):
+                test_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader)
+                test_iter = tqdm(test_iter, desc="Testing", unit="batch", position=2) if steps_bar else test_iter
+                for x, y in test_iter:
                     pred, losses = test_step(
                         model=self.model,
                         loss_fn=loss_fn,
