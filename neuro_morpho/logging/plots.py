@@ -1,4 +1,4 @@
-"""Plots for logging"""
+"""Plotting utilities for logging."""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +15,7 @@ def plot_triplet(
         in_img (np.ndarray): Input image.
         lbl_img (np.ndarray): Label image.
         out_img (np.ndarray): Predicted image.
+
     Returns:
         plt.Figure: Figure containing the triplet plot.
     """

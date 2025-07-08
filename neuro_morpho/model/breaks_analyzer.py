@@ -1,3 +1,5 @@
+"""Analyzes and patches breaks in predicted binary images."""
+
 import cv2
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -6,10 +8,23 @@ MAX_FIXABLE_DISTANCE = 6  # Maximum distance to consider a break fixable
 
 
 class BreaksAnalyzer:
-    """Helper class to analyze and patch the breaks in predicted binary images."""
+    """Analyzes and patches breaks in predicted binary images.
+
+    This class provides methods to identify and fix breaks in the dendrite
+    segmentation of the predicted binary images.
+    """
 
     def masked_max(self, image: np.ndarray, point: tuple[int, int], kernel: np.ndarray) -> tuple[int, int]:
-        """Finds maximal value and its coordinate on the image pixels covered by kernel mask."""
+        """Find the maximum value and its coordinate in a masked region of an image.
+
+        Args:
+            image (np.ndarray): The input image.
+            point (tuple[int, int]): The center of the mask.
+            kernel (np.ndarray): The mask to apply.
+
+        Returns:
+            tuple[int, int]: The coordinate of the maximum value.
+        """
         assert kernel.shape == (3, 3), "Kernel must be 3x3"
         x, y = point
         h, w = image.shape
@@ -37,7 +52,21 @@ class BreaksAnalyzer:
         pred_bin_img: np.ndarray,
         pred_img: np.ndarray,
     ) -> bool:
-        """Draw a line on the mask wrt predicted_image."""
+        """Draw a line on the mask connecting two points.
+
+        The line is drawn with respect to the predicted image, following the path
+        of highest probability.
+
+        Args:
+            line_mask (np.ndarray): The mask to draw the line on.
+            pt1 (tuple[int, int]): The starting point of the line.
+            pt2 (tuple[int, int]): The ending point of the line.
+            pred_bin_img (np.ndarray): The binary prediction image.
+            pred_img (np.ndarray): The probability map prediction image.
+
+        Returns:
+            bool: True if the line was successfully connected, False otherwise.
+        """
         # Find the direction from pt1 on main branch to pt2 on the branch being connected
         vector = (pt1[0] - pt2[0], pt1[1] - pt2[1])
         length_cntr = 0
@@ -74,7 +103,15 @@ class BreaksAnalyzer:
         return line_connected_flag
 
     def analyze_breaks(self, pred_bin_img: np.ndarray, pred_img: np.ndarray) -> np.ndarray:
-        """Find the potential break places in hard prediction (dendrite binary image) and patch it."""
+        """Find and patch potential breaks in the predicted binary image.
+
+        Args:
+            pred_bin_img (np.ndarray): The binary prediction image.
+            pred_img (np.ndarray): The probability map prediction image.
+
+        Returns:
+            np.ndarray: The patched binary image.
+        """
         if pred_img is None:
             raise ValueError("Predicted image must be provided.")
         if pred_bin_img is None:

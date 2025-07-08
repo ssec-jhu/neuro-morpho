@@ -22,6 +22,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+"""Finds the optimal threshold for binarizing a probability map."""
 
 from pathlib import Path
 
@@ -34,7 +35,11 @@ from neuro_morpho.model.tiler import Tiler
 
 
 class ThresholdFinder:
-    """Helper class to get thrshold for a soft version of predicted images."""
+    """Finds the optimal threshold for binarizing a probability map.
+
+    This class iterates through a range of thresholds and calculates the F1
+    score for each, returning the threshold that maximizes the F1 score.
+    """
 
     def __init__(
         self,
@@ -47,7 +52,19 @@ class ThresholdFinder:
         tar_dir: str | Path | None = None,
         tiler: Tiler = None,
     ) -> float:
-        """Find the threshold for the soft version of predicted images using tiles of given images."""
+        """Find the optimal threshold for binarizing a probability map.
+
+        Args:
+            pred_dir (str | Path | None, optional): Directory containing the
+                predicted probability maps. Defaults to None.
+            tar_dir (str | Path | None, optional): Directory containing
+                the ground truth segmentations. Defaults to None.
+            tiler (Tiler, optional): Tiler object for tiling the images.
+                Defaults to None.
+
+        Returns:
+            float: The optimal threshold.
+        """
         if pred_dir is None or tar_dir is None:
             raise ValueError("Both prediction and target directories must be provided.")
 
