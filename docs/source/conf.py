@@ -5,7 +5,7 @@ from neuro_morpho import __project__, __version__
 
 
 project = __project__
-copyright = '2023, SSEC-JHU'
+copyright = '2025, SSEC-JHU'
 author = 'SSEC-JHU'
 
 release = __version__
@@ -16,9 +16,7 @@ version = __version__
 extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
-    'sphinx.ext.autodoc',
     'autoapi.extension',
-    'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
@@ -33,6 +31,8 @@ intersphinx_disabled_domains = ['std']
 templates_path = ['_templates']
 
 autoapi_dirs = ['../../neuro_morpho']
+autoapi_add_toctree_entry = True
+autoapi_ignore = ['*test*']
 
 # -- Options for HTML output
 
