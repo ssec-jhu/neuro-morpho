@@ -4,12 +4,12 @@ import gin
 import gin.config
 import pytest
 
-
 from neuro_morpho import cli
+
 
 def test_register_transforms():
     """Test that the torch transforms are registered correctly."""
-    from torchvision.transforms.v2 import Compose, CenterCrop, RandomCrop, ToTensor, ToImage, ToDtype
+    from torchvision.transforms.v2 import CenterCrop, Compose, RandomCrop, ToDtype, ToImage, ToTensor
 
     cli.register_torch_transforms()
 
@@ -21,7 +21,7 @@ def test_register_transforms():
 
 def test_main_raises():
     """Test that the main function raises an error when no config is provided."""
-    with pytest.raises(IOError, match="Unable to open") as exc_info:
+    with pytest.raises(IOError, match="Unable to open"):
         cli.main(config="does/not/exist.gin")
 
 
