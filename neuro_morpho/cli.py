@@ -1,4 +1,5 @@
 import fire
+import comet_ml # importing this first to get all data logged automatically
 import gin
 import torchvision
 import torchvision.transforms.v2
