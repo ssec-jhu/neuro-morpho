@@ -25,7 +25,7 @@ class Standardize(torch.nn.Module):
 
 @gin.register
 class Norm2One(torch.nn.Module):
-    """Normalize the input tensor to the range [0, 1]."""
+    """Normalize an image to the range [0, 1]."""
 
     def __init__(self, eps: float = 1e-8):
         super().__init__()
