@@ -1,4 +1,7 @@
+"""Comet.ml logger for experiment tracking."""
+
 import os
+import warnings
 from pathlib import Path
 
 import comet_ml
@@ -15,7 +18,10 @@ from neuro_morpho.logging import base
 
 @gin.configurable(allowlist=["api_key", "experiment_key", "project_name", "workspace", "disabled"])
 class CometLogger(base.Logger):
-    """Logger class for logging metrics and images to Comet.ml."""
+    """Logger for Comet.ml.
+
+    This logger sends experiment data to Comet.ml for tracking and visualization.
+    """
 
     def __init__(
         self,
@@ -27,10 +33,16 @@ class CometLogger(base.Logger):
         auto_metric_logging: bool = False,
         disabled: bool = False,
     ) -> None:
-        """Initialize the CometLogger with a comet.ml experiment.
+        """Initialize the CometLogger.
 
         Args:
-            experiment (comet_ml.Experiment): The comet.ml experiment object.
+            api_key (str, optional): The Comet.ml API key. Defaults to None.
+            experiment_key (str, optional): The key for an existing experiment. Defaults to None.
+            project_name (str, optional): The name of the project. Defaults to None.
+            workspace (str, optional): The name of the workspace. Defaults to None.
+            auto_param_logging (bool, optional): Whether to automatically log parameters. Defaults to False.
+            auto_metric_logging (bool, optional): Whether to automatically log metrics. Defaults to False.
+            disabled (bool, optional): Whether to disable the logger. Defaults to False.
         """
         self.experiment = comet_ml.start(
             api_key=api_key or os.getenv("COMET_API_KEY"),
@@ -55,7 +67,11 @@ class CometLogger(base.Logger):
         self, in_img: np.ndarray, lbl_img: np.ndarray, out_img: np.ndarray, name: str, step: int, train: bool
     ) -> None:
         fig, (ax_x, ax_pred, ax_y) = plt.subplots(ncols=3, nrows=1, figsize=(30, 10))
-        ax_x.imshow(np.log(in_img), cmap="Greys_r")
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            ax_x.imshow(np.log(in_img), cmap="Greys_r")
+
         ax_x.set_title("log(Input)")
         ax_x.axis("off")
         ax_pred.imshow(out_img, vmin=0, vmax=1, cmap="Greys_r")

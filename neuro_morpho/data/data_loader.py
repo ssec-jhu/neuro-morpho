@@ -1,4 +1,4 @@
-"""Data Loader for NeuroMorpho Dataset."""
+"""Data Loader for the NeuroMorpho dataset."""
 
 from pathlib import Path
 
@@ -10,7 +10,11 @@ from torchvision.transforms import v2
 
 
 class NeuroMorphoDataset(td.Dataset):
-    """NeuroMorpho Dataset."""
+    """NeuroMorpho Dataset.
+
+    This dataset is used to load images and their corresponding labels for
+    training and testing.
+    """
 
     def __init__(
         self,
@@ -23,8 +27,14 @@ class NeuroMorphoDataset(td.Dataset):
         """Initialize the dataset.
 
         Args:
-            data_dir (str|Path): Directory containing the data.
-            transform (v2.Transform, optional): Transform to be applied to the data. Defaults to None.
+            x_dir (str|Path): Directory containing the input images.
+            y_dir (str|Path): Directory containing the label images.
+            aug_transform (v2.Transform, optional): Transform to be applied to
+                the data for augmentation. Defaults to None.
+            x_norm (v2.Transform, optional): Transform to be applied to the
+                input images for normalization. Defaults to None.
+            y_norm (v2.Transform, optional): Transform to be applied to the
+                label images for normalization. Defaults to None.
         """
         self.img_files = [f for ext in ("*.pgm", "*.tif") for f in Path(x_dir).glob(ext)]
         self.lbl_files = [f for ext in ("*.pgm", "*.tif") for f in Path(y_dir).glob(ext)]
@@ -88,11 +98,17 @@ def build_dataloader(
     """Build a DataLoader for the dataset.
 
     Args:
-        data_dir (str|Path): Directory containing the data.
+        x_dir (str|Path): Directory containing the input images.
+        y_dir (str|Path): Directory containing the label images.
         batch_size (int, optional): Batch size. Defaults to 1.
         shuffle (bool, optional): Whether to shuffle the data. Defaults to True.
         num_workers (int, optional): Number of workers. Defaults to 0.
-        transform (v2.Transform, optional): Transform to be applied to the data. Defaults to None.
+        aug_transform (v2.Transform, optional): Transform to be applied to the
+            data for augmentation. Defaults to None.
+        x_norm (v2.Transform, optional): Transform to be applied to the input
+            images for normalization. Defaults to None.
+        y_norm (v2.Transform, optional): Transform to be applied to the label
+            images for normalization. Defaults to None.
 
     Returns:
         td.DataLoader: DataLoader for the dataset.
