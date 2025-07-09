@@ -1,3 +1,5 @@
+"""Comet.ml logger for experiment tracking."""
+
 import os
 import warnings
 from pathlib import Path
@@ -13,7 +15,10 @@ from neuro_morpho.logging import base
 
 @gin.configurable(allowlist=["api_key", "experiment_key", "project_name", "workspace", "disabled"])
 class CometLogger(base.Logger):
-    """Logger class for logging metrics and images to Comet.ml."""
+    """Logger for Comet.ml.
+
+    This logger sends experiment data to Comet.ml for tracking and visualization.
+    """
 
     def __init__(
         self,
@@ -25,10 +30,16 @@ class CometLogger(base.Logger):
         auto_metric_logging: bool = False,
         disabled: bool = False,
     ) -> None:
-        """Initialize the CometLogger with a comet.ml experiment.
+        """Initialize the CometLogger.
 
         Args:
-            experiment (comet_ml.Experiment): The comet.ml experiment object.
+            api_key (str, optional): The Comet.ml API key. Defaults to None.
+            experiment_key (str, optional): The key for an existing experiment. Defaults to None.
+            project_name (str, optional): The name of the project. Defaults to None.
+            workspace (str, optional): The name of the workspace. Defaults to None.
+            auto_param_logging (bool, optional): Whether to automatically log parameters. Defaults to False.
+            auto_metric_logging (bool, optional): Whether to automatically log metrics. Defaults to False.
+            disabled (bool, optional): Whether to disable the logger. Defaults to False.
         """
         self.experiment = comet_ml.start(
             api_key=api_key or os.getenv("COMET_API_KEY"),

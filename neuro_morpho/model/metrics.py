@@ -1,3 +1,4 @@
+"""Evaluation metrics for model performance."""
 import warnings
 from typing import Callable
 
@@ -14,10 +15,12 @@ def accuracy(pred: PRED, lbl: LBL, threshold: float) -> tuple[str, float]:
     """Calculate the accuracy of predictions.
 
     Args:
-        x (np.ndarray): The true labels.
+        pred (np.ndarray): The predicted labels.
+        lbl (np.ndarray): The true labels.
+        threshold (float): The threshold for binary classification.
 
     Returns:
-        float: The accuracy as a percentage.
+        tuple[str, float]: A tuple containing the metric name and the accuracy value.
     """
     pred_binary = pred >= threshold
     correct_predictions = np.sum(pred_binary == lbl)
@@ -35,10 +38,11 @@ def class_accuracy(pred: PRED, lbl: LBL, class_idx: int, threshold: float) -> tu
     Args:
         pred (np.ndarray): The predicted labels.
         lbl (np.ndarray): The true labels.
+        class_idx (int): The class index to calculate accuracy for.
         threshold (float): The threshold for binary classification.
 
     Returns:
-        float: The class-wise accuracy as a percentage.
+        tuple[str, float]: A tuple containing the metric name and the class-wise accuracy value.
     """
     mask = lbl == class_idx
     _, val = accuracy(pred[mask], lbl[mask], threshold)

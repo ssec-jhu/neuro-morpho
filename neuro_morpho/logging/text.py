@@ -1,3 +1,5 @@
+"""Logger for writing results to text files."""
+
 import json
 from pathlib import Path
 
@@ -10,13 +12,16 @@ from neuro_morpho.logging.plots import plot_triplet
 
 
 class TextLogger(base.Logger):
-    """Logger class for logging metrics and images to text files."""
+    """Logger for writing results to text files.
+
+    This logger saves metrics, parameters, and images to a specified directory.
+    """
 
     def __init__(self, log_dir: Path | str) -> None:
-        """Initialize the TextLogger with a log file.
+        """Initialize the TextLogger.
 
         Args:
-            log_file (str): The path to the log file.
+            log_dir (Path | str): The directory to save the logs.
         """
         self.log_dir = Path(log_dir)
         self.triplet_dir = self.log_dir / "triplets"
