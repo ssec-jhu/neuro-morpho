@@ -1,6 +1,7 @@
 -r dev.txt
 
 sphinx<8.2
+sphinx_autoapi==3.6.0
 sphinx_rtd_theme==3.0.2
 sphinx_book_theme==1.1.4
 sphinx-automodapi==0.18.0

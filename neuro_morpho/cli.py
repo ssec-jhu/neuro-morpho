@@ -1,3 +1,5 @@
+"""Command line interface for training and running models."""
+
 import fire
 import comet_ml # importing this first to get all data logged automatically
 import gin
@@ -7,8 +9,11 @@ import torchvision.transforms.v2
 from neuro_morpho import run
 
 
-def register_torch_transforms():
-    """Register torch transforms to gin."""
+def register_torch_transforms() -> None:
+    """Register torch transforms to gin.
+
+    This allows the user to configure torchvision transforms from the gin config file.
+    """
     gin.external_configurable(torchvision.transforms.v2.Compose, module="torchvision.transforms.v2")
     gin.external_configurable(torchvision.transforms.v2.CenterCrop, module="torchvision.transforms.v2")
     gin.external_configurable(torchvision.transforms.v2.RandomCrop, module="torchvision.transforms.v2")
@@ -18,7 +23,7 @@ def register_torch_transforms():
 
 
 def main(config: str = "unet.config.gin") -> None:
-    """Run the main function.
+    """Run the training and inference pipeline.
 
     Args:
         config (str): The path to the gin configuration file.

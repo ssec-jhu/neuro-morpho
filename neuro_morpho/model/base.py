@@ -1,4 +1,4 @@
-"""A base class for all models to implement"""
+"""Base class for all models."""
 
 from pathlib import Path
 
@@ -10,7 +10,11 @@ ERR_NOT_IMPLEMENTED = "The {name} method is not implemented"
 
 
 class BaseModel:
-    """Base class for all models to implement"""
+    """Base class for all models.
+
+    This class defines the interface for all models. All models should inherit
+    from this class and implement the methods defined here.
+    """
 
     def fit(self, data_dir: str | Path) -> "BaseModel":
         """Fit the model to the data.

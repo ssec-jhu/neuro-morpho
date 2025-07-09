@@ -23,7 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Loss functions for neuro_morpho."""
+"""Loss functions for training models."""
 
 from collections.abc import Callable
 
@@ -42,11 +42,15 @@ LOSS_FN = Callable[[PRED, TARGET], tuple[NAME_LOSS, ...]]
 class WeightedFocalLoss(torch.nn.Module):
     """Weighted version of Focal Loss.
 
-    https://arxiv.org/pdf/1708.02002
+    This loss is designed to address class imbalance by down-weighting easy
+    examples and focusing on hard examples.
+
+    See: https://arxiv.org/pdf/1708.02002
 
     Args:
-        alpha: Weighting factor in range (0, 1) to balance positive vs negative examples.
-        gamma: Focusing parameter to reduce the relative loss for well-classified examples.
+        alpha (float): Weighting factor in range (0, 1) to balance positive vs negative examples.
+        gamma (float): Focusing parameter to reduce the relative loss for well-classified examples.
+        reduction (str): Specifies the reduction to apply to the output: 'none', 'mean', 'sum'.
     """
 
     def __init__(self, alpha: float = 0.25, gamma: float = 2, reduction: str = "mean"):
@@ -56,6 +60,7 @@ class WeightedFocalLoss(torch.nn.Module):
         self.reduction = reduction
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> tuple[str, torch.Tensor]:
+        """Calculate the weighted focal loss."""
         return "weighted_focal_loss", torchvision.ops.sigmoid_focal_loss(
             inputs,
             targets,
@@ -67,7 +72,11 @@ class WeightedFocalLoss(torch.nn.Module):
 
 @gin.configurable(allowlist=["smooth"])
 class DiceLoss(torch.nn.Module):
-    """Dice Loss that can handle multiscale outputs."""
+    """Dice Loss for image segmentation.
+
+    This loss is commonly used for image segmentation tasks. It measures the
+    overlap between the predicted and target segmentations.
+    """
 
     def __init__(self, smooth=1.0):
         super(DiceLoss, self).__init__()
@@ -78,6 +87,7 @@ class DiceLoss(torch.nn.Module):
         preds: torch.Tensor | list[torch.Tensor],
         targets: torch.Tensor | list[torch.Tensor],
     ) -> tuple[str, torch.Tensor]:
+        """Calculate the dice loss."""
         numerator = 2 * torch.sum(preds * targets) + self.smooth
         denominator = torch.sum(preds**2) + torch.sum(targets**2) + self.smooth
         soft_dice_loss = 1 - numerator / denominator
@@ -87,7 +97,11 @@ class DiceLoss(torch.nn.Module):
 
 @gin.configurable(allowlist=["loss_fn", "coefs"])
 class WeightedMap(torch.nn.Module):
-    """Weighted Map Loss."""
+    """Weighted Map Loss.
+
+    This loss applies a weighted sum of a given loss function to a list of
+    predictions and targets.
+    """
 
     def __init__(self, loss_fn: torch.nn.Module, coefs: list[float]):
         super(WeightedMap, self).__init__()
@@ -95,6 +109,7 @@ class WeightedMap(torch.nn.Module):
         self.loss_fn = loss_fn
 
     def forward(self, pred: list[torch.Tensor], lbl: list[torch.Tensor]) -> tuple[str, torch.Tensor]:
+        """Calculate the weighted map loss."""
         total_loss = 0
         for i in range(len(pred)):
             name, loss = self.loss_fn(pred[i], lbl[i])
@@ -104,7 +119,10 @@ class WeightedMap(torch.nn.Module):
 
 @gin.configurable(allowlist=["weights", "losses"])
 class CombinedLoss(torch.nn.Module):
-    """Combined Loss Function."""
+    """Combined Loss Function.
+
+    This loss function combines multiple loss functions with given weights.
+    """
 
     def __init__(self, weights: list[float], losses: list[torch.nn.Module]):
         """
@@ -124,7 +142,8 @@ class CombinedLoss(torch.nn.Module):
             lbl: The target/label tensor.
 
         Returns:
-            tuple[str, torch.Tensor]: The losses weighted by weights.
+            list[tuple[str, torch.Tensor]]: A list of tuples, where each tuple
+                contains the name of the loss and the weighted loss value.
         """
 
         name_vals = [loss(pred, lbl) for loss in self.losses]

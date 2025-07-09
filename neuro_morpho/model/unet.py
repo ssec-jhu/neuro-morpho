@@ -22,6 +22,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+"""U-Net model for image segmentation."""
+
 import functools
 import itertools
 import uuid
@@ -161,6 +163,12 @@ def maybe_pbar(iterable, desc: str, unit: str, position: int, steps_bar: bool) -
 
 @gin.register
 class UNet(base.BaseModel):
+    """U-Net model for image segmentation.
+
+    This class implements the U-Net architecture, a popular convolutional neural
+    network for biomedical image segmentation.
+    """
+
     def __init__(
         self,
         n_input_channels: int = 1,
@@ -169,6 +177,21 @@ class UNet(base.BaseModel):
         decoder_channels: list[int] = [512, 256, 128, 64],
         device: str = get_device(),
     ):
+        """Initialize the UNet model.
+
+        The architecture and code are adapted from:
+        https://github.com/namdvt/skeletonization
+        https://openaccess.thecvf.com/content/ICCV2021W/DLGC/html/Nguyen_U-Net_Based_Skeletonization_and_Bag_of_Tricks_ICCVW_2021_paper.html
+
+        Args:
+            n_input_channels (int, optional): Number of input channels. Defaults to 1.
+            n_output_channels (int, optional): Number of output channels. Defaults to 1.
+            encoder_channels (list[int], optional): List of channel sizes for the encoder.
+                Defaults to [64, 128, 256, 512, 1024].
+            decoder_channels (list[int], optional): List of channel sizes for the decoder.
+                Defaults to [512, 256, 128, 64].
+            device (str, optional): The device to run the model on. Defaults to get_device().
+        """
         super(UNet, self).__init__()
         self.model = UNetModule(
             n_input_channels=n_input_channels,
@@ -216,6 +239,30 @@ class UNet(base.BaseModel):
         n_checkpoints: int = 5,  # Number of checkpoints to keep
         steps_bar: bool = True,  # Show progress bar during training/testing
     ) -> base.BaseModel:
+        """Train the U-Net model.
+
+        Args:
+            training_x_dir (str | Path | None, optional): Path to the training input images. Defaults to None.
+            training_y_dir (str | Path | None, optional): Path to the training label images. Defaults to None.
+            testing_x_dir (str | Path | None, optional): Path to the testing input images. Defaults to None.
+            testing_y_dir (str | Path | None, optional): Path to the testing label images. Defaults to None.
+            train_data_loader (td.DataLoader, optional): Dataloader for training. Defaults to None.
+            test_data_loader (td.DataLoader, optional): Dataloader for testing. Defaults to None.
+            epochs (int, optional): Number of epochs to train for. Defaults to 1.
+            optimizer (torch.optim.Optimizer, optional): The optimizer to use. Defaults to None.
+            loss_fn (loss.LOSS_FN, optional): The loss function to use. Defaults to None.
+            metric_fns (list[metrics.METRIC_FN] | None, optional): List of metric functions to use. Defaults to None.
+            logger (base_logging.Logger, optional): The logger to use. Defaults to None.
+            log_every (int, optional): Log every `log_every` steps. Defaults to 10.
+            init_step (int, optional): The initial step number. Defaults to 0.
+            model_id (str | None, optional): The ID of the model. Defaults to None.
+            models_dir (str | Path, optional): The directory to save the models in. Defaults to Path("models").
+            n_checkpoints (int, optional): The number of checkpoints to keep. Defaults to 5.
+            steps_bar (bool, optional): Whether to show a progress bar for steps. Defaults to True.
+
+        Returns:
+            base.BaseModel: The trained model.
+        """
         model_id = model_id or str(uuid.uuid4()).replace("-", "")
 
         model_dir = Path(models_dir) / model_id
@@ -324,6 +371,18 @@ class UNet(base.BaseModel):
 
     @override
     def predict_proba(self, x: np.ndarray, tiler: Tiler) -> np.ndarray:
+        """Predict the probability map for an input image.
+
+        This method uses tiling to handle large images. The tiles are processed
+        by the model and then stitched back together.
+
+        Args:
+            x (np.ndarray): The input image.
+            tiler (Tiler): The tiler to use for tiling the image.
+
+        Returns:
+            np.ndarray: The predicted probability map.
+        """
         x = np.squeeze(x, axis=(0, 1))  # Remove batch_size and channels from (batch, channels, height, width)
         image_size = x.shape  # (height, width)
         image_tiles = tiler.tile_image(x)
@@ -384,6 +443,20 @@ class UNet(base.BaseModel):
         binarize: bool = True,
         analyze: bool = True,
     ) -> None:
+        """Predict segmentations for all images in a directory.
+
+        This method will predict the probability map for each image, then
+        optionally binarize the result and analyze the breaks in the
+        segmentation.
+
+        Args:
+            in_dir (str | Path): The directory containing the input images.
+            out_dir (str | Path): The directory to save the predictions in.
+            tar_dir (str | Path): The directory containing the target images.
+            tiler (Tiler, optional): The tiler to use for tiling the images. Defaults to None.
+            binarize (bool, optional): Whether to binarize the predictions. Defaults to True.
+            analyze (bool, optional): Whether to analyze and fix breaks in the predictions. Defaults to True.
+        """
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -433,6 +506,17 @@ class UNet(base.BaseModel):
                     cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
+        """Save a checkpoint of the model.
+
+        This method will save the model's state dict and the current step number.
+        It will also remove old checkpoints to keep only the `n_checkpoints` most
+        recent ones.
+
+        Args:
+            checkpoint_dir (Path | str): The directory to save the checkpoint in.
+            n_checkpoints (int): The number of checkpoints to keep.
+            step (int): The current step number.
+        """
         checkpoint_dir = Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         checkpoints = list(checkpoint_dir.glob("*.pt"))
@@ -457,6 +541,11 @@ class UNet(base.BaseModel):
         self.save(checkpoint_path)
 
     def load_checkpoint(self, checkpoint_dir: Path | str) -> None:
+        """Load the most recent checkpoint from a directory.
+
+        Args:
+            checkpoint_dir (Path | str): The directory containing the checkpoints.
+        """
         checkpoint_dir = Path(checkpoint_dir)
         if not checkpoint_dir.exists():
             raise FileNotFoundError(f"Checkpoint dir {str(checkpoint_dir)} does not exist")
@@ -479,6 +568,11 @@ class UNet(base.BaseModel):
 
     @override
     def save(self, path: str | Path) -> None:
+        """Save the model to a file.
+
+        Args:
+            path (str | Path): The path to save the model to.
+        """
         path = Path(path)
         torch.save(
             {"model_state_dict": self.model.state_dict(), "step": getattr(self, "step", 0)},
@@ -487,6 +581,11 @@ class UNet(base.BaseModel):
 
     @override
     def load(self, path: str | Path) -> None:
+        """Load the model from a file.
+
+        Args:
+            path (str | Path): The path to load the model from.
+        """
         path = Path(path)
         # We are the ones saving and loading the model, so we trust the source.
         data = torch.load(path)  # nosec B614
@@ -496,6 +595,11 @@ class UNet(base.BaseModel):
 
 
 class UNetModule(nn.Module):
+    """The U-Net module.
+
+    This module contains the encoder and decoder parts of the U-Net.
+    """
+
     def __init__(
         self,
         n_input_channels: int = 1,
@@ -503,6 +607,18 @@ class UNetModule(nn.Module):
         encoder_channels: list[int] = [64, 128, 256, 512, 1024],
         decoder_channels: list[int] = [512, 256, 128, 64],
     ):
+        """Initialize the UNetModule.
+
+        Args:
+            n_input_channels (int, optional): Number of input channels.
+                Defaults to 1.
+            n_output_channels (int, optional): Number of output channels.
+                Defaults to 1.
+            encoder_channels (list[int], optional): List of channel sizes for
+                the encoder. Defaults to [64, 128, 256, 512, 1024].
+            decoder_channels (list[int], optional): List of channel sizes for
+                the decoder. Defaults to [512, 256, 128, 64].
+        """
         super(UNetModule, self).__init__()
         self.encoder = Encoder(in_channels=n_input_channels, channels=encoder_channels)
         self.decoder = Decoder(
@@ -512,12 +628,37 @@ class UNetModule(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
+        """Forward pass through the U-Net.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            list[torch.Tensor]: A list of output tensors from the decoder.
+        """
         x = self.encoder(x)
         return self.decoder(x)
 
 
 class Encoder(nn.Module):
+    """The encoder part of the U-Net.
+
+    This module consists of a series of convolutional and attention layers
+    followed by max pooling.
+    """
+
     def __init__(self, in_channels: int, channels: list[int], kernel_size: int = 3, padding: int = 1):
+        """Initialize the Encoder.
+
+        Args:
+            in_channels (int): The number of input channels.
+            channels (list[int]): A list of the number of channels for each
+                convolutional layer.
+            kernel_size (int, optional): The size of the convolutional kernel.
+                Defaults to 3.
+            padding (int, optional): The padding for the convolution. Defaults
+                to 1.
+        """
         super(Encoder, self).__init__()
         self._channels = channels
         channel_list = [in_channels] + channels
@@ -528,6 +669,15 @@ class Encoder(nn.Module):
         self.pooling = nn.MaxPool2d(kernel_size=2)
 
     def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
+        """Forward pass through the encoder.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            list[torch.Tensor]: A list of the output tensors from each block
+                before pooling.
+        """
         outs = []
         for i in range(1, len(self._channels) + 1):
             # apply pooling after the first set of conv/att operations
@@ -541,9 +691,27 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
+    """The decoder part of the U-Net.
+
+    This module consists of a series of up-convolutional, convolutional, and
+    attention layers.
+    """
+
     def __init__(
         self, in_channels: int, out_channels: int, channels: list[int], kernel_size: int = 3, padding: int = 1
     ):
+        """Initialize the Decoder.
+
+        Args:
+            in_channels (int): The number of input channels.
+            out_channels (int): The number of output channels.
+            channels (list[int]): A list of the number of channels for each
+                convolutional layer.
+            kernel_size (int, optional): The size of the convolutional kernel.
+                Defaults to 3.
+            padding (int, optional): The padding for the convolution.
+                Defaults to 1.
+        """
         super(Decoder, self).__init__()
         self._channels = channels
         channel_list = [in_channels] + channels
@@ -558,6 +726,14 @@ class Decoder(nn.Module):
             )
 
     def forward(self, x: list[torch.Tensor]) -> list[torch.Tensor]:
+        """Forward pass through the decoder.
+
+        Args:
+            x (list[torch.Tensor]): A list of the output tensors from the encoder.
+
+        Returns:
+            list[torch.Tensor]: A list of the output tensors from each block.
+        """
         x, aux_inputs = x[-1], x[:-1]
         outs = []
         for i in range(1, len(self._channels) + 1):
@@ -572,6 +748,8 @@ class Decoder(nn.Module):
 
 
 class Conv2d(nn.Module):
+    """A convolutional layer with batch normalization and ReLU activation."""
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True, dilation=1):
         super(Conv2d, self).__init__()
         self.conv = nn.Conv2d(
@@ -588,6 +766,8 @@ class Conv2d(nn.Module):
 
 
 class UpConv2d(nn.Module):
+    """An up-convolutional layer with batch normalization and ReLU activation."""
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True):
         super(UpConv2d, self).__init__()
         self.conv = nn.ConvTranspose2d(
@@ -604,6 +784,8 @@ class UpConv2d(nn.Module):
 
 
 class DoubleConv2d(nn.Module):
+    """A block of two convolutional layers."""
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True):
         super(DoubleConv2d, self).__init__()
         self.conv1 = Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias)
@@ -616,6 +798,8 @@ class DoubleConv2d(nn.Module):
 
 
 class AttentionGroup(nn.Module):
+    """An attention group module."""
+
     def __init__(self, num_channels):
         super(AttentionGroup, self).__init__()
         self.conv1 = Conv2d(num_channels, num_channels, kernel_size=3, padding=1)
@@ -636,7 +820,9 @@ class AttentionGroup(nn.Module):
 
 @gin.configurable(allowlist=["ratio"])
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
+    """A channel attention module."""
+
+    def __init__(self, in_planes: int, ratio: int = 16):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
@@ -656,6 +842,8 @@ class ChannelAttention(nn.Module):
 
 
 class SpatialAttention(nn.Module):
+    """A spatial attention module."""
+
     def __init__(self, kernel_size=7):
         super(SpatialAttention, self).__init__()
 
