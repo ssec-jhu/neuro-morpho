@@ -137,9 +137,9 @@ skeleton_analysis.stat_fns = [
     ("Total Length", @calculate_total_length),
 ]
 
-run.model_file = None
-run.train = True
-run.infer = False
+run.model_file = "/019cae52c3654ebe8deec73b171b1e00/model.pt"
+run.train = False
+run.infer = True
 run.binarize = True
 run.analyze = False
 run.model = @UNet()
@@ -147,11 +147,11 @@ run.training_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_T
 run.training_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 run.testing_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.testing_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
-run.model_save_dir = "models"
-run.model_out_y_dir = "data/output"
-run.model_stats_output_dir = "data/stats/model"
-run.labeled_stats_output_dir = "data/stats/label"
-run.report_output_dir = "data/report"
+run.model_save_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/models"
+run.model_out_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/output"
+run.model_stats_output_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/stats/model"
+run.labeled_stats_output_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/stats/label"
+run.report_output_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/report"
 run.logger = @CometLogger()
 run.tile_size = 512
 run.tile_assembly = 'nn'

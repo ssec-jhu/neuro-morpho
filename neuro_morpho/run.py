@@ -51,6 +51,7 @@ def run(
         data_dir (str|Path): The directory containing the data
         output_dir (str|Path): The directory to save the results
     """
+    model_file = Path(model_file)
     training_x_dir = Path(training_x_dir)
     training_y_dir = Path(training_y_dir)
     testing_x_dir = Path(testing_x_dir)
@@ -95,12 +96,13 @@ def run(
         )
 
     if infer:
-        if model is None:
+        if model.exp_id == None:
             if model_file is None:
                 raise FileNotFoundError("Model file is not provided.")
-            model.load(model_save_dir / model_file)
-            if not model.exists():
-                raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
+            else:
+                model_file = model_file.relative_to("/")  # Remove leading slash if present
+                model_path = model_save_dir / model_file
+                model.load(model_path)
         tiler = Tiler(tile_size, tile_assembly)
         tiler.get_tiling_attributes(image_size)
         model.predict_dir(testing_x_dir, model_out_y_dir, testing_y_dir, tiler, binarize, analyze)
