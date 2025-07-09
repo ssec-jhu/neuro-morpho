@@ -1,3 +1,4 @@
+import warnings
 from typing import Callable
 
 import gin
@@ -21,7 +22,9 @@ def accuracy(pred: PRED, lbl: LBL, threshold: float) -> tuple[str, float]:
     pred_binary = pred >= threshold
     correct_predictions = np.sum(pred_binary == lbl)
     total_predictions = len(lbl)
-    accuracy_value = correct_predictions / total_predictions
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        accuracy_value = correct_predictions / total_predictions
     return "accuracy", accuracy_value  # Return as percentage
 
 
