@@ -5,7 +5,6 @@ import gin
 import neuro_morpho.logging.base as log
 from neuro_morpho.model import base
 from neuro_morpho.model.tiler import Tiler
-from neuro_morpho.reports import generator
 
 
 def _config_line_filter(line: str) -> bool:
@@ -86,14 +85,6 @@ def run(
                 testing_x_dir,
                 testing_y_dir,
             )
-
-        generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
-        generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
-        generator.generate_report(
-            model_stats_output_dir,
-            labeled_stats_output_dir,
-            report_output_dir,
-        )
 
     if infer:
         if model.exp_id == None:
