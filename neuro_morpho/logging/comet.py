@@ -1,6 +1,7 @@
 """Comet.ml logger for experiment tracking."""
 
 import os
+import warnings
 from pathlib import Path
 
 import comet_ml
@@ -63,7 +64,11 @@ class CometLogger(base.Logger):
         self, in_img: np.ndarray, lbl_img: np.ndarray, out_img: np.ndarray, name: str, step: int, train: bool
     ) -> None:
         fig, (ax_x, ax_pred, ax_y) = plt.subplots(ncols=3, nrows=1, figsize=(30, 10))
-        ax_x.imshow(np.log(in_img + 1e-6), cmap="Greys_r")
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            ax_x.imshow(np.log(in_img), cmap="Greys_r")
+
         ax_x.set_title("log(Input)")
         ax_x.axis("off")
         ax_pred.imshow(out_img, vmin=0, vmax=1, cmap="Greys_r")
