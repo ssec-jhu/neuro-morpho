@@ -17,12 +17,17 @@ def make_binary(
     x: np.ndarray,
     percentile: int,
 ) -> np.ndarray:
-    """Make the input images binary based on a threshold.
+    """Binarize an image based on a percentile threshold.
+
+    This function thresholds the input image `x` at the given `percentile`
+    and then skeletonizes the result.
 
     Args:
-        x (np.ndarray): The input data should be size of
-            (n_samples, width, height), channels should be one.
-        percentile (int): The percentile to use as the threshold
+        x (np.ndarray): The input image. Should be of shape (n_samples, width, height).
+        percentile (int): The percentile to use as the threshold.
+
+    Returns:
+        np.ndarray: The binarized and skeletonized image.
     """
     thresholds = np.percentile(x, percentile, axis=(1, 2), keepdims=True)  # (n, 1, 1)
     binarized = np.greater_equal(x, thresholds)  # (n, w, h)
@@ -39,13 +44,18 @@ def make_binary(
 
 @gin.configurable(allowlist=["percentile"])
 class SimpleBaseLine(base.BaseModel):
-    """A simple baseline model for testing."""
+    """A simple baseline model for image segmentation.
+
+    This model binarizes the input image based on a percentile threshold and
+    then skeletonizes the result.
+    """
 
     def __init__(self, percentile: int = 95, name: str | None = None):
         """Initialize the model.
 
         Args:
             percentile (int, optional): The percentile to use as the threshold. Defaults to 95.
+            name (str, optional): The name of the model. Defaults to None.
         """
         self.percentile = percentile
         self.name = name or "simple_base_line"
@@ -58,6 +68,7 @@ class SimpleBaseLine(base.BaseModel):
         testing_x_dir: Path | str,
         testing_y_dir: Path | str,
     ) -> "SimpleBaseLine":
+        """This model does not require fitting, so this method just returns self."""
         return self
 
     @override
@@ -65,6 +76,7 @@ class SimpleBaseLine(base.BaseModel):
         self,
         x: np.ndarray,
     ) -> np.ndarray:
+        """Predict the segmentation for the input image."""
         x = np.squeeze(x, axis=-1)
         x = make_binary(x, self.percentile)
         return np.expand_dims(x, axis=-1)
@@ -77,6 +89,7 @@ class SimpleBaseLine(base.BaseModel):
         tile_size: int = 512,
         tile_assembly: str = "mean",
     ) -> None:
+        """Predict the segmentation for all images in a directory."""
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -93,11 +106,13 @@ class SimpleBaseLine(base.BaseModel):
 
     @override
     def save(self, path: Path | str) -> None:
+        """Save the model's percentile threshold to a file."""
         fname = self.name + ".txt"
         with (Path(path) / fname).open("w") as f:
             f.write(str(self.percentile))
 
     @override
     def load(self, path: Path | str) -> None:
+        """Load the model's percentile threshold from a file."""
         with Path(path).open("r") as f:
             self.percentile = int(f.read().strip())

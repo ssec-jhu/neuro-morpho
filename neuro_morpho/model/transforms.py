@@ -1,4 +1,4 @@
-"""Transforms for the NeuroMorpho dataset."""
+"""Image transformations for data augmentation and preprocessing."""
 
 import gin
 import torch
@@ -8,7 +8,10 @@ from typing_extensions import override
 
 @gin.register
 class Standardize(torch.nn.Module):
-    """Standardize the input tensor by subtracting the mean and dividing by the standard deviation."""
+    """Standardize an image.
+
+    This transform subtracts the mean and divides by the standard deviation.
+    """
 
     def __init__(self, eps: float = 1e-8):
         super().__init__()
@@ -16,12 +19,13 @@ class Standardize(torch.nn.Module):
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply the standardization."""
         return (x - x.mean(dim=(1, 2), keepdim=False)) / (x.std(dim=(1, 2), keepdim=False) + self.eps)
 
 
 @gin.register
 class Norm2One(torch.nn.Module):
-    """Normalize the input tensor to the range [0, 1]."""
+    """Normalize an image to the range [0, 1]."""
 
     def __init__(self, eps: float = 1e-8):
         super().__init__()
@@ -29,22 +33,27 @@ class Norm2One(torch.nn.Module):
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply the normalization."""
         return x / (x.max() + self.eps)  # Add small epsilon to avoid division by zero
 
 
 @gin.configurable(allowlist=["in_size", "factors"])
 class DownSample(torch.nn.Module):
-    """Downsamples the input tensor by indicated factors."""
+    """Downsample an image by a given factor.
+
+    This transform can downsample an image by a single factor or multiple factors.
+    """
 
     def __init__(
         self,
         in_size: tuple[int, int],
         factors: int | float | tuple[float, ...] | list[float],
     ):
-        """Downsamples the input tensor by indicated factors.
+        """Initialize the DownSample transform.
 
         Args:
-            factors (int | list[int]): Downsampling factors for each  w/h dimensions.
+            in_size (tuple[int, int]): The input image size.
+            factors (int | float | tuple[float, ...] | list[float]): The downsampling factor(s).
         """
         super().__init__()
         h, w = in_size
@@ -61,13 +70,13 @@ class DownSample(torch.nn.Module):
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor | tuple[torch.Tensor, ...]:
-        """Downsample the input tensor.
+        """Apply the downsampling.
 
         Args:
-            stack (torch.Tensor): Input tensor.
+            x (torch.Tensor): The input tensor.
 
         Returns:
-            torch.Tensor: Downsampled tensor.
+            torch.Tensor | tuple[torch.Tensor, ...]: The downsampled tensor(s).
         """
         if self._single_factor:
             return self.transforms(x)
