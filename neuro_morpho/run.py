@@ -5,7 +5,6 @@ import gin
 import neuro_morpho.logging.base as log
 from neuro_morpho.model import base
 from neuro_morpho.model.tiler import Tiler
-from neuro_morpho.reports import generator
 
 
 def _config_line_filter(line: str) -> bool:
