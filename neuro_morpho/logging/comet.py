@@ -3,6 +3,9 @@ from pathlib import Path
 
 import comet_ml
 import gin
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from typing_extensions import override
