@@ -8,16 +8,28 @@ from typing_extensions import override
 
 @gin.register
 class Standardize(torch.nn.Module):
+    """Standardize the input tensor by subtracting the mean and dividing by the standard deviation."""
+
+    def __init__(self, eps: float = 1e-8):
+        super().__init__()
+        self.eps = eps
+
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - x.mean(dim=(1, 2), keepdim=False)) / x.std(dim=(1, 2), keepdim=False)
+        return (x - x.mean(dim=(1, 2), keepdim=False)) / (x.std(dim=(1, 2), keepdim=False) + self.eps)
 
 
 @gin.register
 class Norm2One(torch.nn.Module):
+    """Normalize the input tensor to the range [0, 1]."""
+
+    def __init__(self, eps: float = 1e-8):
+        super().__init__()
+        self.eps = eps
+
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x / x.max()
+        return x / (x.max() + self.eps)  # Add small epsilon to avoid division by zero
 
 
 @gin.configurable(allowlist=["in_size", "factors"])

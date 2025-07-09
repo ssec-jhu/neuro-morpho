@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 import torch
+from tqdm import tqdm
 
 from neuro_morpho.model import unet
 from neuro_morpho.model.tiler import Tiler
@@ -394,3 +395,20 @@ def test_fit_no_epochs(tmp_path: Path):
 
     assert (tmp_path / model_id / "checkpoints").exists()
     assert (tmp_path / model_id / "model.pt").exists()
+
+
+def test_maybe_pbar():
+    """Test the maybe_pbar function."""
+    iterable = range(10)
+    desc = "Test"
+    unit = "item"
+    position = 0
+    steps_bar = True
+
+    # Test with progress bar
+    pbar_iter = unet.maybe_pbar(iterable, desc, unit, position, steps_bar=steps_bar)
+    assert isinstance(pbar_iter, tqdm)
+
+    # Test without progress bar
+    pbar_iter = unet.maybe_pbar(iterable, desc, unit, position, steps_bar=False)
+    assert pbar_iter is iterable
