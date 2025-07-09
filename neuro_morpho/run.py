@@ -87,7 +87,7 @@ def run(
             )
 
     if infer:
-        if model.exp_id == None:
+        if not train: # If there was no training, we need to load the model
             if model_file is None:
                 raise FileNotFoundError("Model file is not provided.")
             else:
