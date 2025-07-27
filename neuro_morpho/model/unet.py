@@ -706,7 +706,7 @@ class UNet(base.BaseModel):
     def save_threshold(self, model_dir: Path | str, threshold: float) -> None:
         """Save a binarization threshold for a given model.
 
-        This method will save the thrwhold to a file named `threshold.txt` in the
+        This method will save the threshold to a file named `threshold.csv` in the
         specified model directory.
 
         Args:
@@ -716,7 +716,7 @@ class UNet(base.BaseModel):
         model_dir = Path(model_dir)
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        thresh_file_path = model_dir / "threshold.txt"
+        thresh_file_path = model_dir / "threshold.csv"
         with open(thresh_file_path, "w") as f:
             f.write(f"{threshold}\n")
 
@@ -730,7 +730,7 @@ class UNet(base.BaseModel):
         if not model_dir.exists():
             raise FileNotFoundError(f"Model dir {model_dir!s} does not exist")
 
-        thresh_file_path = model_dir / "threshold.txt"
+        thresh_file_path = model_dir / "threshold.csv"
         if not thresh_file_path.exists():
             warnings.warn(f"Threshold file {thresh_file_path!s} does not exist")
             threshold = None
