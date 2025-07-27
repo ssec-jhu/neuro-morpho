@@ -135,3 +135,5 @@ Facilitates in building, testing & viewing the docs.
  * ``make clean``
  * ``make html``
  * To view the docs in your default browser run ``open docs/_build/html/index.html``.
+
+ # nosec B614: File is locally generated and verified to contain only model state_dict.
