@@ -38,6 +38,7 @@ import gin
 import numpy as np
 import torch
 import torch.utils.data as td
+from sklearn.metrics import f1_score
 from torch import nn
 from tqdm import tqdm
 from typing_extensions import override
@@ -46,7 +47,6 @@ import neuro_morpho.logging.base as base_logging
 from neuro_morpho.data import data_loader
 from neuro_morpho.model import base, loss, metrics
 from neuro_morpho.model.breaks_analyzer import BreaksAnalyzer
-from neuro_morpho.model.threshold import ThresholdFinder
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
 
@@ -393,19 +393,19 @@ class UNet(base.BaseModel):
             for j in range(n_x):
                 tile = image_tiles[i * n_x + j, :, :]
                 # Start the inferring process
-                tile_flip_0 = tile[::-1, ...]  # Vertical flip
-                tile_flip_1 = tile[:, ::-1, ...]  # Horizontal flip
-                tile_flip__1 = tile[::-1, ::-1, ...]  # Both axes
+                tile_flip_0 = cv2.flip(tile, 0)  # Vertical flip
+                tile_flip_1 = cv2.flip(tile, 1)  # Horizontal flip
+                tile_flip__1 = cv2.flip(tile, -1)  # Both axes
                 tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
                 tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(self.device)
                 with torch.no_grad():
                     pred, _, _, _ = self.model(tile_torch)
                     pred = torch.sigmoid(pred)
                     pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
-                pred_ori = pred_ori.cpu().numpy()
-                pred_flip_0 = pred_flip_0.cpu().numpy()[::-1, ...]
-                pred_flip_1 = pred_flip_1.cpu().numpy()[:, ::-1, ...]
-                pred_flip__1 = pred_flip__1.cpu().numpy()[::-1, ::-1, ...]
+                pred_ori = pred_ori.cpu().numpy()[0, ::]
+                pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy()[0, ::], 0)
+                pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy()[0, ::], 1)
+                pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy()[0, ::], -1)
                 tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
                 pred_array[
                     i * n_x + j,
@@ -418,7 +418,6 @@ class UNet(base.BaseModel):
         non_zero_count = np.sum(non_zero_mask, axis=0)  # Shape (img_height, img_width)
         non_zero_count[non_zero_count == 0] = 1  # Prevent division by zero
         if tiler.tile_assembly == "mean":
-            non_zero_sum = np.sum(pred_array, axis=0)  # Shape (img_height, img_width)
             non_zero_sum = np.sum(pred_array * non_zero_mask, axis=0)  # Shape (img_height, img_width)
             pred = non_zero_sum / non_zero_count  # Shape (img_height, img_width)
         elif tiler.tile_assembly == "max":
@@ -433,15 +432,24 @@ class UNet(base.BaseModel):
 
         return pred[np.newaxis, np.newaxis, :, :]  # (1, 1, height, width)
 
-    @override
+    @gin.register(
+        allowlist=[
+            "tile_size",
+            "tile_assembly",
+            "binarize",
+            "fix_breaks",
+        ]
+    )
     def predict_dir(
         self,
         in_dir: str | Path,
         out_dir: str | Path,
-        tar_dir: str | Path,
-        tiler: Tiler = None,
+        threshold: float,
+        mode: str,
+        tile_size: tuple[int, int] = (512, 512),
+        tile_assembly: str = "nn",
         binarize: bool = True,
-        analyze: bool = True,
+        fix_breaks: bool = True,
     ) -> None:
         """Predict segmentations for all images in a directory.
 
@@ -452,58 +460,162 @@ class UNet(base.BaseModel):
         Args:
             in_dir (str | Path): The directory containing the input images.
             out_dir (str | Path): The directory to save the predictions in.
-            tar_dir (str | Path): The directory containing the target images.
-            tiler (Tiler, optional): The tiler to use for tiling the images. Defaults to None.
-            binarize (bool, optional): Whether to binarize the predictions. Defaults to True.
-            analyze (bool, optional): Whether to analyze and fix breaks in the predictions. Defaults to True.
+            threshold (float): Use to get the hard prediction (binary output)
+            mode (str): The mode of the prediction, can be 'test' or 'infer'
+                'test' - runs the model on the test set (same size images) and saves the statistics
+                'infer' - runs the model on the inference set (images may be of different size) and saves the output
+            tile_size (tuple[int, int]): The size of the tiles to use for tiling the input images
+            tile_assembly (str): The method for assembling the tiles, can be 'nn' (nearest neighbor), 'mean', or 'max'
+            binarize (bool): Whether to binarize the output
+            fix_breaks (bool): Whether to fix breaks in the binarized output
         """
         in_dir = Path(in_dir)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         img_paths = sorted(list(Path(in_dir).glob("*.tif")) + list(Path(in_dir).glob("*.pgm")))
-        for img_path in img_paths:
+        if not img_paths:
+            raise ValueError(f"No images found in the input directory {in_dir}.")
+
+        # Create tiler with the specified tile size and assembly method
+        tiler = Tiler(tile_size[0], tile_assembly)
+        if mode == "test":  # all images are of the same size
+            image_size = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED).shape[:2]
+            tiler.get_tiling_attributes(image_size)
+
+        for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
+            image_shape_changed = False
             img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
             image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            # Convert to shape (1, 1, image.shape[0], image.shape[1]) => 1 sample, 1 channel
+            if mode == "infer":  # Extend image size if less thn tile size and create tiling attributes
+                if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
+                    image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
+                    image_shape_changed = True
+                tiler.get_tiling_attributes(image.shape[:2])
+            # Get soft prediction for the image
+            print("Getting soft prediction for the image ", img_path.name)
             image = np.stack(image)[np.newaxis, np.newaxis, :, :]
             pred = self.predict_proba(image, tiler)
-            pred = (np.squeeze(pred, axis=(0, 1)) * 255).astype(np.uint8)
+            pred = np.squeeze(pred, axis=(0, 1))
+            if image_shape_changed:
+                pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
-            cv2.imwrite(pred_path, pred)
-        if binarize:
-            thresh = ThresholdFinder().find_threshold(out_dir, tar_dir, tiler)
-            pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
-            for pred_path in pred_paths:
-                pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED) / 255.0
+            cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
+
+            if binarize:  # Get hard prediction for the image
+                print("Getting hard prediction for the image ", pred_path.name)
                 pred_bin = pred.copy()
-                pred_bin[pred_bin >= thresh] = 1
-                pred_bin[pred_bin < thresh] = 0
+                pred_bin[pred_bin >= threshold] = 1
+                pred_bin[pred_bin < threshold] = 0
                 pred_bin = (pred_bin * 255).astype(np.uint8)
                 pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                 cv2.imwrite(pred_bin_path, pred_bin)
 
-            if analyze:
+            if fix_breaks:
                 breaks_analyzer = BreaksAnalyzer()
-                pred_bin_paths = sorted(
-                    list(Path(out_dir).glob("*_pred_bin.tif")) + list(Path(out_dir).glob("*_pred_bin.pgm"))
+                print("Fixing breaks for the image ", pred_bin_path.name)
+                pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
+                pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+
+    @gin.register(
+        allowlist=[
+            "tile_size",
+            "tile_assembly",
+        ]
+    )
+    def find_threshold(
+        self,
+        img_dir: str | Path,
+        lbl_dir: str | Path,
+        model_dir: str | Path,
+        tile_size: tuple[int, int] = (512, 512),
+        tile_assembly: str = "nn",
+    ) -> float:
+        """Find the optimal threshold for binarizing a soft prediction.
+
+        Args:
+            img_dir (str | Path | None, optional): Directory containing the
+                original images. Defaults to None.
+            lbl_dir (str | Path | None, optional): Directory containing
+                the ground truth segmentations. Defaults to None.
+            tiler (Tiler, optional): Tiler object for tiling the images.
+                Defaults to None.
+
+        Returns:
+            float: The optimal threshold.
+        """
+        threshold = self.load_threshold(model_dir)
+        if threshold is not None:
+            return threshold
+
+        if img_dir is None or lbl_dir is None:
+            raise ValueError("Both image and label directories must be provided.")
+
+        img_dir = Path(img_dir)
+        lbl_dir = Path(lbl_dir)
+
+        img_paths = sorted(list(Path(img_dir).glob("*.tif")) + list(Path(img_dir).glob("*.pgm")))
+        lbl_paths = sorted(list(Path(lbl_dir).glob("*.tif")) + list(Path(lbl_dir).glob("*.pgm")))
+        if not img_paths or not lbl_paths:
+            raise ValueError("No images found in one or both of the provided directories.")
+
+        # Ensure the number of images in both directories match
+        if len(img_paths) != len(lbl_paths):
+            raise ValueError("The number of images in the input and target directories must match.")
+
+        # Create a tiler object to handle the tiling of the images
+        tiler = Tiler(tile_size[0], tile_assembly)
+        image = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED)
+        tiler.get_tiling_attributes(image.shape[:2])  # Get tiling attributes based on image size
+
+        preds = list()
+        labels = list()
+
+        # Read images and labels
+        for img_path, lbl_path in tqdm(
+            zip(img_paths, lbl_paths, strict=False),
+            total=len(img_paths),
+            desc="Processing images for threshold calculation",
+        ):
+            if not img_path.exists() or not lbl_path.exists():
+                raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
+            # Read the image and target
+            image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED) / 255.0
+            image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
+            label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
+            label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
+            if image is None or label is None:
+                raise ValueError(
+                    f"Could not read image {img_path} or label {lbl_path}. Ensure they are valid image files."
                 )
-                if not pred_bin_paths:
-                    raise ValueError("No predicted binary images found for analysis.")
-                pred_paths = sorted(list(Path(out_dir).glob("*_pred.tif")) + list(Path(out_dir).glob("*_pred.pgm")))
-                if not pred_paths:
-                    raise ValueError("No predicted images found for analysis.")
-                if len(pred_bin_paths) != len(pred_paths):
-                    raise ValueError(
-                        "The number of predicted binary images does not match the number of predicted images. "
-                        "Analysis will be skipped."
-                    )
-                for pred_bin_path, pred_path in zip(pred_bin_paths, pred_paths, strict=False):
-                    pred_bin_img = cv2.imread(str(pred_bin_path), cv2.IMREAD_UNCHANGED)
-                    pred_img = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
-                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin_img, pred_img).copy()
-                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
-                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+            # Get soft prediction for the image
+            print("Image: ", img_path.name)
+            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+            pred = self.predict_proba(image, tiler)
+            if pred is None:
+                raise ValueError(f"Could not get soft prediction for image {img_path}.")
+
+            pred = np.squeeze(pred, axis=(0, 1))
+            cv2.imwrite(str(img_path.with_suffix(".pred.tif")), (pred * 255).astype(np.uint8))
+            preds.append(pred)
+            labels.append(label)
+
+        preds = np.stack(preds)
+        labels = np.stack(labels)
+
+        f1s = list()
+        thresholds = np.stack(list(range(40, 80))) / 100
+        for threshold in tqdm(thresholds):
+            preds_ = preds.copy()
+            preds_[preds_ >= threshold] = 1
+            preds_[preds_ < threshold] = 0
+            f1s.append(f1_score(preds_.reshape(-1), labels.reshape(-1)))
+        f1s = np.stack(f1s)
+        threshold = thresholds[f1s.argmax()]
+        self.save_threshold(model_dir, threshold)
+
+        return threshold
 
     def save_checkpoint(self, checkpoint_dir: Path | str, n_checkpoints: int, step: int) -> None:
         """Save a checkpoint of the model.
@@ -523,13 +635,11 @@ class UNet(base.BaseModel):
 
         if len(checkpoints) >= n_checkpoints:
             need_to_remove = (len(checkpoints) - n_checkpoints) + 1
-            checkpoints_to_remove = list(
-                sorted(
-                    checkpoints,
-                    # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
-                    # we want to remove the oldest checkpoints so we sort by that.
-                    key=lambda p: p.stat().st_mtime,
-                )
+            checkpoints_to_remove = sorted(
+                checkpoints,
+                # st_mtime is the time of last modification: https://docs.python.org/3/library/stat.html#stat.ST_MTIME
+                # we want to remove the oldest checkpoints so we sort by that.
+                key=lambda p: p.stat().st_mtime,
             )[:need_to_remove]
 
             for ctr in checkpoints_to_remove:
@@ -548,7 +658,7 @@ class UNet(base.BaseModel):
         """
         checkpoint_dir = Path(checkpoint_dir)
         if not checkpoint_dir.exists():
-            raise FileNotFoundError(f"Checkpoint dir {str(checkpoint_dir)} does not exist")
+            raise FileNotFoundError(f"Checkpoint dir {checkpoint_dir!s} does not exist")
 
         checkpoints = list(checkpoint_dir.glob("checkpoint_*.pt"))
 
@@ -563,7 +673,7 @@ class UNet(base.BaseModel):
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )[0]
-        print(f"Loading checkpoint: {str(checkpoint)}")
+        print(f"Loading checkpoint: {checkpoint!s}")
         self.load(checkpoint)
 
     @override
@@ -587,11 +697,48 @@ class UNet(base.BaseModel):
             path (str | Path): The path to load the model from.
         """
         path = Path(path)
-        # We are the ones saving and loading the model, so we trust the source.
-        data = torch.load(path)  # nosec B614
+        # The model can be opened on CPU or Mac, so we use map_location to ensure that.
+        data = torch.load(path, map_location=torch.device("cpu"))  # nosec B614
         self.model.load_state_dict(data["model_state_dict"])
         self.model.to(self.device)
         self.step = data.get("step", 0)
+
+    def save_threshold(self, model_dir: Path | str, threshold: float) -> None:
+        """Save a binarization threshold for a given model.
+
+        This method will save the thrwhold to a file named `threshold.txt` in the
+        specified model directory.
+
+        Args:
+            model_dir (Path | str): The directory to save the threshold file in.
+            threshold (float): The threshold value to save.
+        """
+        model_dir = Path(model_dir)
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        thresh_file_path = model_dir / "threshold.txt"
+        with open(thresh_file_path, "w") as f:
+            f.write(f"{threshold}\n")
+
+    def load_threshold(self, model_dir: Path | str) -> float:
+        """Load the threshold from a given model path.
+
+        Args:
+            model_dir (Path | str): The directory containing the threshold file.
+        """
+        model_dir = Path(model_dir)
+        if not model_dir.exists():
+            raise FileNotFoundError(f"Model dir {model_dir!s} does not exist")
+
+        thresh_file_path = model_dir / "threshold.txt"
+        if not thresh_file_path.exists():
+            warnings.warn(f"Threshold file {thresh_file_path!s} does not exist")
+            threshold = None
+        else:
+            with open(thresh_file_path) as f:
+                threshold = float(f.read().strip())
+
+        return threshold
 
 
 class UNetModule(nn.Module):

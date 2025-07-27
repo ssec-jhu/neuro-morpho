@@ -21,7 +21,7 @@ class BaseModel:
 
         Args:
             data_dir (str|Path): The directory containing the data files to fit the model
-                images should have the size (n_samples, width, height, channels)
+                images should have the size (n_samples, channels, height, width)
 
         Returns:
             BaseModel: The fitted model
@@ -29,18 +29,30 @@ class BaseModel:
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="fit"))
 
     def predict_dir(
-        self, in_dir: str | Path, out_dir: str | Path, tar_dir: str | Path, tiler: Tiler, binarize: bool, analyze: bool
+        self,
+        in_dir: str | Path,
+        out_dir: str | Path,
+        threshold: float,
+        mode: str,
+        tile_size: tuple[int, int],
+        tile_assembly: str,
+        binarize: bool,
+        fix_breaks: bool,
     ) -> None:
         """Predict the output for all images in the given directory.
 
         Args:
             in_dir (str|Path): The directory containing the data files to predict
-                images should have the size (n_samples, channels, width, height)
+                images should have the size (n_samples, channels, height, width)
             out_dir (str|Path): The directory to save the output
-            tar_dir (str|Path): The target directory to be used in case of threshold calculation
-            tiler (Tiler): The tiler object to use for tiling the input data
-            binarize (bool): Whether to binarize the output (soft prediction) or not
-            analyze (bool): Whether to analyze and fix potential breaks in the binarized output (hard prediction) or not
+            threshold (float): Use to get the hard prediction (binary output)
+            mode (str): The mode of the prediction, can be 'test' or 'infer'
+                'test' - runs the model on the test set (same size images) and saves the statistics
+                'infer' - runs the model on the inference set (images may be of different size) and saves the output
+            tile_size (tuple[int, int]): The size of the tiles to use for tiling the input images
+            tile_assembly (str): The method for assembling the tiles, can be 'nn' (nearest neighbor), 'mean', or 'max'
+            binarize (bool): Whether to binarize the output
+            fix_breaks (bool): Whether to fix breaks in the binarized output
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
 
@@ -48,7 +60,7 @@ class BaseModel:
         """Predict the output given the input x
 
         Args:
-            x (np.ndarray): The input data should be size of (n_samples, channels, width, height)
+            x (np.ndarray): The input data should be size of (n_samples, channels, height, width)
             thresh (float): The threshold to use for the prediction
 
         Returns:
@@ -60,13 +72,22 @@ class BaseModel:
         """Predict a soft version of the output given the input x and tiling params as an option
 
         Args:
-            x (np.ndarray): The input data should be size of (n_samples, channels, width, height)
+            x (np.ndarray): The input data should be size of (n_samples, channels, height, width)
             tiler (Tiler): The tiler object to use for tiling the input data
 
         Returns:
             np.ndarray: The predicted output
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_proba"))
+
+    def find_threshold(self, in_dir: str | Path, out_dir: str | Path, model_dir: str | Path) -> float:
+        """Predict the output for all images in the given directory.
+
+        Args:
+            in_dir (str|Path): The directory containing images (validation set)
+            out_dir (str|Path): The directory containing labels (validation set)
+        """
+        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
 
     def save(self, path: Path | str) -> None:
         """Save the model to the given path.
