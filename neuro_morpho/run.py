@@ -113,7 +113,7 @@ def run(
         infer: Run the model on the inference set, consisting of images in testing_x_dir. Images could be
         of different size, and the threshold should be provided.
     """
-    if test or infer:
+    if test or infer:  # One of them, not both
         if not train:  # If there was no training, we need to load the model
             if model_id is None:
                 raise FileNotFoundError("Model ID is not provided.")
@@ -131,18 +131,10 @@ def run(
                 model_dir,
             )
 
-        if test:
-            model.predict_dir(
-                in_dir=testing_x_dir,
-                out_dir=model_out_y_dir,
-                threshold=threshold,
-                mode="test",
-            )
-
-        if infer:
-            model.predict_dir(
-                in_dir=testing_x_dir,
-                out_dir=model_out_y_dir,
-                threshold=threshold,
-                mode="infer",
-            )
+        mode = "test" if test else "infer"
+        model.predict_dir(
+            in_dir=testing_x_dir,
+            out_dir=model_out_y_dir,
+            threshold=threshold,
+            mode=mode,
+        )
