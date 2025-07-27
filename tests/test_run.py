@@ -20,11 +20,17 @@ def test_run_infer():
         decoder_channels=[512, 256, 128, 64],
         device=get_device(),
     )
+    model_save_dir = Path("models")
+    model_id = "test"
+    model_dir = model_save_dir / Path(model_id) / Path("checkpoints")
+    model_dir.mkdir(parents=True, exist_ok=True)
+    unet_model.save(model_dir / "checkpoint_1.pt")
+
+    unet_model.save_threshold(model_save_dir / Path(model_id), 0.5)
 
     testing_dir = Path("data/processed/test")
     training_dir = Path("data/processed/train")
     model_out_y_dir = Path("data/output/test")
-
     for dir_path, subdir in itertools.product([testing_dir, training_dir], ["test_imgs", "test_lbls"]):
         (dir_path / subdir).mkdir(parents=True, exist_ok=True)
 
@@ -38,30 +44,30 @@ def test_run_infer():
     target_tensor = input_tensor.copy()
     cv2.imwrite(testing_dir / "test_lbls" / "test_lbl.tif", (target_tensor * 255).astype(np.uint8))
 
-    # Apply strong Gaussian blur
+    # Apply Gaussian blur
     input_tensor = cv2.GaussianBlur(input_tensor, ksize=(3, 3), sigmaX=1)
     cv2.imwrite(testing_dir / "test_imgs" / "test_img.tif", (input_tensor * 255).astype(np.uint8))
 
     run.run(
         model=unet_model,
-        model_file=None,
-        training_x_dir=training_dir / "imgs",
-        training_y_dir=training_dir / "lbls",
+        model_id=model_id,
+        training_x_dir=training_dir / "train_imgs",
+        training_y_dir=training_dir / "train_lbls",
+        validating_x_dir=testing_dir / "test_imgs",
+        validating_y_dir=testing_dir / "test_lbls",
         testing_x_dir=testing_dir / "test_imgs",
         testing_y_dir=testing_dir / "test_lbls",
-        model_save_dir="models/",
+        model_save_dir=model_save_dir,
         model_out_y_dir=model_out_y_dir,
         model_stats_output_dir="data/stats/model/",
         labeled_stats_output_dir="data/stats/label/",
         report_output_dir="data/report/",
         logger=None,
         train=False,
-        infer=True,
-        binarize=True,
-        analyze=True,
-        tile_size=64,
-        tile_assembly="nn",
-        image_size=input_tensor.shape,
+        get_threshold=False,
+        threshold=None,
+        test=True,
+        infer=False,
     )
 
     assert Path(model_out_y_dir).exists()
