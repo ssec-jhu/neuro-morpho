@@ -26,8 +26,6 @@ def test_run():
     model_dir.mkdir(parents=True, exist_ok=True)
     unet_model.save(model_dir / "checkpoint_1.pt")
 
-    unet_model.save_threshold(model_save_dir / Path(model_id), 0.5)
-
     testing_dir = Path("data/processed/test")
     training_dir = Path("data/processed/train")
     model_out_y_dir = Path("data/output/test")

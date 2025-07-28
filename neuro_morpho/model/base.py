@@ -86,8 +86,9 @@ class BaseModel:
         Args:
             in_dir (str|Path): The directory containing images (validation set)
             out_dir (str|Path): The directory containing labels (validation set)
+            model_dir (str|Path): The directory containing model checkpoints
         """
-        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_dir"))
+        raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="find_threshold"))
 
     def save(self, path: Path | str) -> None:
         """Save the model to the given path.

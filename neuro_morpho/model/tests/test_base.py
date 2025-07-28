@@ -23,6 +23,9 @@ def test_base_model_init_raises() -> None:
         model.predict_proba(None, None)
 
     with pytest.raises(NotImplementedError):
+        model.find_threshold(None, None, None)
+
+    with pytest.raises(NotImplementedError):
         model.save("path")
 
     with pytest.raises(NotImplementedError):
