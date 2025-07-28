@@ -9,8 +9,8 @@ from neuro_morpho.model.unet import UNet
 from neuro_morpho.util import get_device
 
 
-def test_run_infer():
-    """Test the run function in the inference mode."""
+def test_run():
+    """Test the run function in both test and inference modes."""
 
     # Initialize the UNet model
     unet_model = UNet(
@@ -68,6 +68,33 @@ def test_run_infer():
         threshold=None,
         test=True,
         infer=False,
+    )
+
+    assert Path(model_out_y_dir).exists()
+    assert (Path(model_out_y_dir) / Path("test_img_pred.tif")).exists()
+    assert (Path(model_out_y_dir) / Path("test_img_pred_bin.tif")).exists()
+    assert (Path(model_out_y_dir) / Path("test_img_pred_bin_fixed.tif")).exists()
+
+    run.run(
+        model=unet_model,
+        model_id=model_id,
+        training_x_dir=training_dir / "train_imgs",
+        training_y_dir=training_dir / "train_lbls",
+        validating_x_dir=testing_dir / "test_imgs",
+        validating_y_dir=testing_dir / "test_lbls",
+        testing_x_dir=testing_dir / "test_imgs",
+        testing_y_dir=testing_dir / "test_lbls",
+        model_save_dir=model_save_dir,
+        model_out_y_dir=model_out_y_dir,
+        model_stats_output_dir="data/stats/model/",
+        labeled_stats_output_dir="data/stats/label/",
+        report_output_dir="data/report/",
+        logger=None,
+        train=False,
+        get_threshold=True,
+        threshold=None,
+        test=False,
+        infer=True,
     )
 
     assert Path(model_out_y_dir).exists()
