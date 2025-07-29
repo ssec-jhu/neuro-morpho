@@ -94,13 +94,13 @@ def train_step(
     return pred, losses
 
 
-def test_step(
+def val_step(
     model: torch.nn.Module,
     loss_fn: loss.LOSS_FN,
     x: torch.Tensor,
     y: torch.Tensor,
 ) -> tuple[torch.Tensor, list[tuple[str, torch.Tensor]]]:
-    """Perform a single testing step."""
+    """Perform a single validating step."""
     with torch.no_grad():
         pred = model(x)
         losses = loss_fn(pred, y)
@@ -206,7 +206,7 @@ class UNet(base.BaseModel):
     @gin.register(
         allowlist=[
             "train_data_loader",
-            "test_data_loader",
+            "validate_data_loader",
             "epochs",
             "optimizer",
             "loss_fn",
@@ -223,10 +223,10 @@ class UNet(base.BaseModel):
         self,
         training_x_dir: str | Path | None = None,
         training_y_dir: str | Path | None = None,
-        testing_x_dir: str | Path | None = None,
-        testing_y_dir: str | Path | None = None,
+        validating_x_dir: str | Path | None = None,
+        validating_y_dir: str | Path | None = None,
         train_data_loader: td.DataLoader = None,
-        test_data_loader: td.DataLoader = None,
+        validate_data_loader: td.DataLoader = None,
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
         loss_fn: loss.LOSS_FN = None,
@@ -237,17 +237,17 @@ class UNet(base.BaseModel):
         model_id: str | None = None,
         models_dir: str | Path = Path("models"),
         n_checkpoints: int = 5,  # Number of checkpoints to keep
-        steps_bar: bool = True,  # Show progress bar during training/testing
+        steps_bar: bool = True,  # Show progress bar during training/validating
     ) -> base.BaseModel:
         """Train the U-Net model.
 
         Args:
             training_x_dir (str | Path | None, optional): Path to the training input images. Defaults to None.
             training_y_dir (str | Path | None, optional): Path to the training label images. Defaults to None.
-            testing_x_dir (str | Path | None, optional): Path to the testing input images. Defaults to None.
-            testing_y_dir (str | Path | None, optional): Path to the testing label images. Defaults to None.
+            validating_x_dir (str | Path | None, optional): Path to the validating input images. Defaults to None.
+            validating_y_dir (str | Path | None, optional): Path to the validating label images. Defaults to None.
             train_data_loader (td.DataLoader, optional): Dataloader for training. Defaults to None.
-            test_data_loader (td.DataLoader, optional): Dataloader for testing. Defaults to None.
+            validate_data_loader (td.DataLoader, optional): Dataloader for validating. Defaults to None.
             epochs (int, optional): Number of epochs to train for. Defaults to 1.
             optimizer (torch.optim.Optimizer, optional): The optimizer to use. Defaults to None.
             loss_fn (loss.LOSS_FN, optional): The loss function to use. Defaults to None.
@@ -273,7 +273,7 @@ class UNet(base.BaseModel):
         step = self.step if hasattr(self, "step") else init_step
 
         train_data_loader = train_data_loader or data_loader.build_dataloader(training_x_dir, training_y_dir)
-        test_data_loader = test_data_loader or data_loader.build_dataloader(testing_x_dir, testing_y_dir)
+        validate_data_loader = validate_data_loader or data_loader.build_dataloader(validating_x_dir, validating_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
 
@@ -334,9 +334,9 @@ class UNet(base.BaseModel):
 
                 # x: b, 1, h, w
                 # y: b, n_lbls, h, w
-                test_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), test_data_loader)
-                for x, y in maybe_pbar(test_iter, desc="Testing", unit="batch", position=2, steps_bar=steps_bar):
-                    pred, losses = test_step(
+                val_iter = itertools.starmap(lambda x, y: (self.cast_fn(x), self.cast_fn(y)), validate_data_loader)
+                for x, y in maybe_pbar(val_iter, desc="Testing", unit="batch", position=2, steps_bar=steps_bar):
+                    pred, losses = val_step(
                         model=self.model,
                         loss_fn=loss_fn,
                         x=x,
