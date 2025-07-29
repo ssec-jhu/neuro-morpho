@@ -8,6 +8,8 @@ import torch
 import torch.utils.data as td
 from torchvision.transforms import v2
 
+from neuro_morpho.util import get_device
+
 
 class NeuroMorphoDataset(td.Dataset):
     """NeuroMorpho Dataset.
@@ -120,11 +122,12 @@ def build_dataloader(
         x_norm=x_norm,
         y_norm=y_norm,
     )
+    device = get_device()
 
     return td.DataLoader(
         dataset=dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=(device != "mps"),  # MPS backend does not support pin_memory
     )

@@ -4,7 +4,6 @@ import gin
 
 import neuro_morpho.logging.base as log
 from neuro_morpho.model import base
-from neuro_morpho.model.tiler import Tiler
 
 
 def _config_line_filter(line: str) -> bool:
@@ -24,9 +23,11 @@ def config_str_to_dict(config_str: str) -> dict:
 @gin.configurable
 def run(
     model: base.BaseModel,
-    model_file: str | Path,
+    model_id: str | Path,
     training_x_dir: str | Path,
     training_y_dir: str | Path,
+    validating_x_dir: str | Path,
+    validating_y_dir: str | Path,
     testing_x_dir: str | Path,
     testing_y_dir: str | Path,
     model_save_dir: str | Path,
@@ -36,12 +37,10 @@ def run(
     report_output_dir: str | Path,
     logger: log.Logger = None,
     train: bool = False,
+    get_threshold: bool = False,
+    threshold: float = None,
+    test: bool = False,
     infer: bool = False,
-    binarize: bool = True,
-    analyze: bool = True,
-    tile_size: int = 512,
-    tile_assembly: str = "nn",
-    image_size: tuple[int, int] = (3334, 3334),
 ):
     """Run the model on the data and save the results.
 
@@ -52,6 +51,8 @@ def run(
     """
     training_x_dir = Path(training_x_dir)
     training_y_dir = Path(training_y_dir)
+    validating_x_dir = Path(validating_x_dir)
+    validating_y_dir = Path(validating_y_dir)
     testing_x_dir = Path(testing_x_dir)
     testing_y_dir = Path(testing_y_dir)
     model_save_dir = Path(model_save_dir)
@@ -72,8 +73,8 @@ def run(
             model = model.fit(
                 training_x_dir,
                 training_y_dir,
-                testing_x_dir,
-                testing_y_dir,
+                validating_x_dir,
+                validating_y_dir,
                 logger=logger,
                 model_id=logger.experiment.get_key(),
             )
@@ -81,17 +82,57 @@ def run(
             model = model.fit(
                 training_x_dir,
                 training_y_dir,
-                testing_x_dir,
-                testing_y_dir,
+                validating_x_dir,
+                validating_y_dir,
             )
 
-    if infer:
-        if model is None:
-            if model_file is None:
-                raise FileNotFoundError("Model file is not provided.")
-            model.load(model_save_dir / model_file)
-            if not model.exists():
-                raise FileNotFoundError(f"Model file {model_save_dir / model_file} does not exist.")
-        tiler = Tiler(tile_size, tile_assembly)
-        tiler.get_tiling_attributes(image_size)
-        model.predict_dir(testing_x_dir, model_out_y_dir, testing_y_dir, tiler, binarize, analyze)
+    if get_threshold:  # if there is a need to binarize the output (soft prediction)
+        if not train:  # If there was no training, we need to load the model
+            if model_id is None:
+                raise FileNotFoundError("Model ID is not provided.")
+            else:
+                checkpoint_dir = model_save_dir / model_id / "checkpoints"
+                model.load_checkpoint(checkpoint_dir)
+
+        if threshold is None:  # Get the threshold
+            model_dir = model_save_dir / Path(model_id)
+            threshold = model.find_threshold(
+                validating_x_dir,
+                validating_y_dir,
+                model_dir,
+            )
+
+    """
+        Two following options:
+        test: Run the model on the test set, consisting of same size images in testing_x_dir
+        and its labels in testing_y_dir. The process includes threshold calculation for binarization purposes,
+        usiing the validation images in validating_x_dir and their labels in validating_y_dir.
+        
+        infer: Run the model on the inference set, consisting of images in testing_x_dir. Images could be
+        of different size, and the threshold should be provided.
+    """
+    if test or infer:  # One of them, not both
+        if not train:  # If there was no training, we need to load the model
+            if model_id is None:
+                raise FileNotFoundError("Model ID is not provided.")
+            else:
+                checkpoint_dir = model_save_dir / model_id / "checkpoints"
+                model.load_checkpoint(checkpoint_dir)
+                if model is None:
+                    raise FileNotFoundError(f"Model file not found in {checkpoint_dir}.")
+
+        if threshold is None:  # Get the threshold
+            model_dir = model_save_dir / model_id
+            threshold = model.find_threshold(
+                validating_x_dir,
+                validating_y_dir,
+                model_dir,
+            )
+
+        mode = "test" if test else "infer"
+        model.predict_dir(
+            in_dir=testing_x_dir,
+            out_dir=model_out_y_dir,
+            threshold=threshold,
+            mode=mode,
+        )
