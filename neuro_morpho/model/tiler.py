@@ -82,13 +82,13 @@ class Tiler:
             self.nearest_map = np.argmin(distances, axis=-1)
 
     def extend_image_shape(self, orig_image: np.ndarray) -> tuple[np.ndarray, tuple[int, int]]:
-        """Calculate the tiling attributes based on the image size.
+        """Create image with extended size to fit the tile size.
 
-        This method calculates the x and y coordinates of the tiles and the
-        nearest neighbor map if the tile assembly method is 'nn'.
+        This method calculates models the distribution of noise/background as a gaussian and creates extended
+        with pixels' greylevels distributed in the same manner.
 
         Args:
-            image_size (tuple[int, int]): The size of the image.
+            orig_image (np.ndarray): Original image.
         """
         height, width = orig_image.shape
         extended_height, extended_width = height, width
