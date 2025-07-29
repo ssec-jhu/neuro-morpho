@@ -62,7 +62,7 @@ def run(
     report_output_dir = Path(report_output_dir)
 
     if train:
-        if logger is not None or model_id is not None:
+        if logger is not None:
             if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
                 logger.log_parameters(config)
 
@@ -76,7 +76,7 @@ def run(
                 validating_x_dir,
                 validating_y_dir,
                 logger=logger,
-                model_id=model_id or logger.experiment.get_key(),
+                model_id=logger.experiment.get_key(),
             )
         else:
             model = model.fit(
