@@ -698,7 +698,8 @@ class UNet(base.BaseModel):
         """
         path = Path(path)
         # The model can be opened on CPU or Mac, so we use map_location to ensure that.
-        data = torch.load(path, map_location=torch.device("cpu"))  # nosec B614
+        data = torch.load(path, map_location=torch.device("cpu"))  # nosec B614: File is locally generated
+        # and verified to contain only model state_dict.
         self.model.load_state_dict(data["model_state_dict"])
         self.model.to(self.device)
         self.step = data.get("step", 0)
