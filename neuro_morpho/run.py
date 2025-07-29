@@ -93,8 +93,6 @@ def run(
             else:
                 checkpoint_dir = model_save_dir / model_id / "checkpoints"
                 model.load_checkpoint(checkpoint_dir)
-                if model is None:
-                    raise FileNotFoundError(f"Model file not found in {checkpoint_dir}.")
 
         if threshold is None:  # Get the threshold
             model_dir = model_save_dir / Path(model_id)
