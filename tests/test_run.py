@@ -30,8 +30,6 @@ def test_run():
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
     unet_model.save(checkpoints_dir / "checkpoint_1.pt")
 
-    unet_model.save_threshold(model_dir, 0.5)
-
     logger = CometLogger(experiment_key=model_id, disabled=True)
 
     training_dir = Path("data/processed/train")
@@ -72,7 +70,7 @@ def test_run():
         report_output_dir="data/report/",
         logger=logger,
         train=False,
-        get_threshold=False,
+        get_threshold=True,
         test=True,
         infer=False,
     )
@@ -98,7 +96,7 @@ def test_run():
         report_output_dir="data/report/",
         logger=logger,
         train=False,
-        get_threshold=True,
+        get_threshold=False,
         test=False,
         infer=True,
     )
