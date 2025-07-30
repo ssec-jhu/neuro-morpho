@@ -17,6 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
+CometLogger.experiment_key = "019cae52c3654ebe8deec73b171b1e00"
 CometLogger.disabled = False
 
 
@@ -81,7 +82,7 @@ validate/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/Sim
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 11
 validate/build_dataloader.shuffle = True
-validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for testing
+validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for validating
 validate/build_dataloader.x_norm = @Standardize()
 validate/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
 
@@ -106,7 +107,7 @@ UNet.decoder_channels = [512, 256, 128, 64]
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
 UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
-UNet.fit.epochs =   150
+UNet.fit.epochs =   2
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
