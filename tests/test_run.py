@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 
 from neuro_morpho import run
+from neuro_morpho.logging.comet import CometLogger
 from neuro_morpho.model.unet import UNet
 from neuro_morpho.util import get_device
 
@@ -21,14 +22,19 @@ def test_run():
         device=get_device(),
     )
     model_save_dir = Path("models")
-    model_id = "test"
-    model_dir = model_save_dir / Path(model_id) / Path("checkpoints")
-    model_dir.mkdir(parents=True, exist_ok=True)
-    unet_model.save(model_dir / "checkpoint_1.pt")
+    model_id = "019cae52c3654ebe8deec73b171b1e00"
+    model_dir = model_save_dir / Path(model_id)
+    checkpoints_dir = model_dir / Path("checkpoints")
+    checkpoints_dir.mkdir(parents=True, exist_ok=True)
+    unet_model.save(checkpoints_dir / "checkpoint_1.pt")
+
+    unet_model.save_threshold(model_dir, 0.5)
+
+    logger = CometLogger(experiment_key=model_id, disabled=False)
 
     testing_dir = Path("data/processed/test")
     training_dir = Path("data/processed/train")
-    model_out_y_dir = Path("data/output/test")
+    model_out_y_dir = Path("data/output") / Path(model_id)
     for dir_path, subdir in itertools.product([testing_dir, training_dir], ["test_imgs", "test_lbls"]):
         (dir_path / subdir).mkdir(parents=True, exist_ok=True)
 
@@ -48,7 +54,6 @@ def test_run():
 
     run.run(
         model=unet_model,
-        model_id=model_id,
         training_x_dir=training_dir / "train_imgs",
         training_y_dir=training_dir / "train_lbls",
         validating_x_dir=testing_dir / "test_imgs",
@@ -60,10 +65,9 @@ def test_run():
         model_stats_output_dir="data/stats/model/",
         labeled_stats_output_dir="data/stats/label/",
         report_output_dir="data/report/",
-        logger=None,
+        logger=logger,
         train=False,
         get_threshold=False,
-        threshold=None,
         test=True,
         infer=False,
     )
@@ -75,7 +79,6 @@ def test_run():
 
     run.run(
         model=unet_model,
-        model_id=model_id,
         training_x_dir=training_dir / "train_imgs",
         training_y_dir=training_dir / "train_lbls",
         validating_x_dir=testing_dir / "test_imgs",
@@ -87,10 +90,9 @@ def test_run():
         model_stats_output_dir="data/stats/model/",
         labeled_stats_output_dir="data/stats/label/",
         report_output_dir="data/report/",
-        logger=None,
+        logger=logger,
         train=False,
         get_threshold=True,
-        threshold=None,
         test=False,
         infer=True,
     )

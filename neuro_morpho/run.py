@@ -23,7 +23,6 @@ def config_str_to_dict(config_str: str) -> dict:
 @gin.configurable
 def run(
     model: base.BaseModel,
-    model_id: str | Path,
     training_x_dir: str | Path,
     training_y_dir: str | Path,
     validating_x_dir: str | Path,
@@ -38,7 +37,6 @@ def run(
     logger: log.Logger = None,
     train: bool = False,
     get_threshold: bool = False,
-    threshold: float = None,
     test: bool = False,
     infer: bool = False,
 ):
@@ -61,30 +59,27 @@ def run(
     labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
 
+    if logger is None:
+        raise ValueError("Logger is not provided. Please provide a logger to log the results.")
+
+    model_id = logger.experiment.get_key()
+
     if train:
-        if logger is not None:
-            if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
-                logger.log_parameters(config)
+        if config := config_str_to_dict(str(gin.config_str(max_line_length=int(1e5)))):
+            logger.log_parameters(config)
 
-            logger.log_code(
-                folder=Path(__file__).parent,
-            )
+        logger.log_code(
+            folder=Path(__file__).parent,
+        )
 
-            model = model.fit(
-                training_x_dir,
-                training_y_dir,
-                validating_x_dir,
-                validating_y_dir,
-                logger=logger,
-                model_id=logger.experiment.get_key(),
-            )
-        else:
-            model = model.fit(
-                training_x_dir,
-                training_y_dir,
-                validating_x_dir,
-                validating_y_dir,
-            )
+        model = model.fit(
+            training_x_dir,
+            training_y_dir,
+            validating_x_dir,
+            validating_y_dir,
+            logger=logger,
+            model_id=model_id,
+        )
 
     if get_threshold:  # if there is a need to binarize the output (soft prediction)
         if not train:  # If there was no training, we need to load the model
@@ -94,13 +89,14 @@ def run(
                 checkpoint_dir = model_save_dir / model_id / "checkpoints"
                 model.load_checkpoint(checkpoint_dir)
 
-        if threshold is None:  # Get the threshold
-            model_dir = model_save_dir / Path(model_id)
-            threshold = model.find_threshold(
-                validating_x_dir,
-                validating_y_dir,
-                model_dir,
-            )
+        model_dir = model_save_dir / Path(model_id)
+        threshold = model.find_threshold(
+            validating_x_dir,
+            validating_y_dir,
+            model_dir,
+        )
+    else:
+        threshold = None
 
     """
         Two following options:
@@ -118,8 +114,6 @@ def run(
             else:
                 checkpoint_dir = model_save_dir / model_id / "checkpoints"
                 model.load_checkpoint(checkpoint_dir)
-                if model is None:
-                    raise FileNotFoundError(f"Model file not found in {checkpoint_dir}.")
 
         if threshold is None:  # Get the threshold
             model_dir = model_save_dir / model_id
