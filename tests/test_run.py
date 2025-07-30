@@ -30,7 +30,7 @@ def test_run():
 
     unet_model.save_threshold(model_dir, 0.5)
 
-    logger = CometLogger(experiment_key=model_id, disabled=False)
+    logger = CometLogger(experiment_key=model_id, disabled=True)
 
     testing_dir = Path("data/processed/test")
     training_dir = Path("data/processed/train")
