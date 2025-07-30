@@ -83,12 +83,8 @@ def run(
 
     if get_threshold:  # if there is a need to binarize the output (soft prediction)
         if not train:  # If there was no training, we need to load the model
-            if model_id is None:
-                raise FileNotFoundError("Model ID is not provided.")
-            else:
-                checkpoint_dir = model_save_dir / model_id / "checkpoints"
-                model.load_checkpoint(checkpoint_dir)
-
+            checkpoint_dir = model_save_dir / model_id / "checkpoints"
+            model.load_checkpoint(checkpoint_dir)
         model_dir = model_save_dir / Path(model_id)
         threshold = model.find_threshold(
             validating_x_dir,
@@ -109,12 +105,8 @@ def run(
     """
     if test or infer:  # One of them, not both
         if not train:  # If there was no training, we need to load the model
-            if model_id is None:
-                raise FileNotFoundError("Model ID is not provided.")
-            else:
-                checkpoint_dir = model_save_dir / model_id / "checkpoints"
-                model.load_checkpoint(checkpoint_dir)
-
+            checkpoint_dir = model_save_dir / model_id / "checkpoints"
+            model.load_checkpoint(checkpoint_dir)
         if threshold is None:  # Get the threshold
             model_dir = model_save_dir / model_id
             threshold = model.find_threshold(
