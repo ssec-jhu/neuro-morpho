@@ -137,8 +137,8 @@ def test_train_step():
     assert isinstance(losses[1], MockLoss)
 
 
-def test_test_step():
-    """Test the test_step method of the UNet model."""
+def test_val_step():
+    """Test the val_step method of the UNet model."""
     # Create a mock model and optimizer
     model = MockModel(lambda x: x * 2)
     loss_fn = MockLossFn()
@@ -148,7 +148,7 @@ def test_test_step():
     targets = np.array([[2, 4, 6], [8, 10, 12]], dtype=np.float32)
 
     # Call the train_step method
-    outputs, losses = unet.test_step(model, loss_fn, inputs, targets)
+    outputs, losses = unet.val_step(model, loss_fn, inputs, targets)
 
     # Check the outputs and losses
     assert np.array_equal(outputs, inputs * 2)
@@ -387,7 +387,7 @@ def test_fit_no_epochs(tmp_path: Path):
         models_dir=tmp_path,
         optimizer=optimzer,
         train_data_loader=iter([]),  # Mock object for testing
-        test_data_loader=iter([]),  # Mock object for testing
+        validate_data_loader=iter([]),  # Mock object for validating
         epochs=1,
         logger=None,
         model_id=model_id,
