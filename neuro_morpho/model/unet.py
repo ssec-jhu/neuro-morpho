@@ -296,7 +296,7 @@ class UNet(base.BaseModel):
 
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
 
                     log_metrics(
                         logger=logger,
@@ -343,7 +343,7 @@ class UNet(base.BaseModel):
                         y=y,
                     )
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
 
                     loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
