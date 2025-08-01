@@ -17,7 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = "019cae52c3654ebe8deec73b171b1e00"
+CometLogger.experiment_key = "019cae52c3654ebe8deec73b171b1e00"  # Example experiment key (or None)
 CometLogger.disabled = False
 
 
@@ -82,7 +82,7 @@ validate/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 63
 validate/build_dataloader.shuffle = True
-validate/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for validating
+validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for validating
 validate/build_dataloader.x_norm = @Standardize()
 validate/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
 
@@ -144,7 +144,6 @@ skeleton_analysis.stat_fns = [
 ]
 
 run.model = @UNet()
-run.model_id = "411ecfbd34bb4c76a08c8b1ee875eca8"
 run.model_save_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/models"
 run.model_out_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/output"
 run.model_stats_output_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/stats/model"
@@ -156,6 +155,7 @@ run.training_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNe
 run.training_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 run.validating_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.validating_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
+run.logger = @CometLogger()
 
 run.get_threshold = False  # Calculate or uplaod threshold for binarization
 
@@ -164,5 +164,3 @@ run.testing_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew
 run.testing_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/test/lbls"
 
 run.infer = False
-
-run.logger = @CometLogger()

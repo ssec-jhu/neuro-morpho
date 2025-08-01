@@ -21,7 +21,7 @@ def register_torch_transforms() -> None:
     gin.external_configurable(torchvision.transforms.v2.ToDtype, module="torchvision.transforms.v2")
 
 
-def main(config: str = "unet.config.gin") -> None:
+def main(config: str = "unet.config_mac.gin") -> None:
     """Run the training and inference pipeline.
 
     Args:

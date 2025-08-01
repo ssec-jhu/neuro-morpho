@@ -402,10 +402,10 @@ class UNet(base.BaseModel):
                     pred, _, _, _ = self.model(tile_torch)
                     pred = torch.sigmoid(pred)
                     pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
-                pred_ori = pred_ori.cpu().numpy()[0, ::]
-                pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy()[0, ::], 0)
-                pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy()[0, ::], 1)
-                pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy()[0, ::], -1)
+                pred_ori = pred_ori.cpu().numpy().squeeze()
+                pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy().squeeze(), 0)
+                pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy().squeeze(), 1)
+                pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy().squeeze(), -1)
                 tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
                 pred_array[
                     i * n_x + j,
