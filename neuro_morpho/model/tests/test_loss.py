@@ -49,9 +49,9 @@ def test_weighted_focal_loss(inputs: torch.Tensor, targets: torch.Tensor) -> Non
     ],
 )
 def test_dice_loss(inputs: torch.Tensor, targets: torch.Tensor) -> None:
-    """Test the DiceLoss class."""
+    """Test the SigmoidDiceLoss class."""
 
-    loss_fn = loss.DiceLoss(smooth=1.0)
+    loss_fn = loss.SigmoidDiceLoss(smooth=1.0)
     preds = torch.ones((1, 1, 2, 2), dtype=torch.float32) * 0.5
 
     name_loss, loss_value = loss_fn(preds, targets)
@@ -83,7 +83,7 @@ def test_weighted_map() -> None:
 def test_combined_loss() -> None:
     """Test the CombinedLoss class."""
     loss_fn1 = loss.WeightedFocalLoss(alpha=0.25, gamma=2)
-    loss_fn2 = loss.DiceLoss(smooth=1.0)
+    loss_fn2 = loss.SigmoidDiceLoss(smooth=1.0)
     weights = [0.5, 0.5]
     combined_loss = loss.CombinedLoss(weights, [loss_fn1, loss_fn2])
 
