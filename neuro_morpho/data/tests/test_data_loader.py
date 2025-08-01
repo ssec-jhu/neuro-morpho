@@ -36,8 +36,6 @@ def test_NeuroMorphoDataset(tmp_path: str | Path) -> None:
         x_dir=tmp_path / "img",
         y_dir=tmp_path / "lbl",
         aug_transform=None,
-        x_norm=None,
-        y_norm=None,
     )
 
     for i in range(len(ds)):
@@ -63,8 +61,6 @@ def test_data_loader(tmp_path: Path) -> None:
         shuffle=False,
         num_workers=0,
         aug_transform=None,
-        x_norm=None,
-        y_norm=None,
     )
 
     # Test the DataLoader
