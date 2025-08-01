@@ -31,7 +31,7 @@ neg/class_accuracy.threshold = 0.5
 
 WeightedFocalLoss.alpha = 0.25
 WeightedFocalLoss.gamma = 2.0
-DiceLoss.smooth = 1
+SigmoidDiceLoss.smooth = 1
 
 v2.RandomCrop.size = %IN_SIZE  # Size of the random crop for training images
 v2.CenterCrop.size = %IN_SIZE  # Size of the center crop for validation/test images
@@ -41,7 +41,7 @@ v2.ToDtype.scale = True
 DownSample.in_size = %IN_SIZE  # Size of the downsampled images
 DownSample.factors = (1.0, 0.50, 0.25, 0.125)
 
-dice/WeightedMap.loss_fn = @DiceLoss()
+dice/WeightedMap.loss_fn = @SigmoidDiceLoss()
 dice/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
 weighted_focal_loss/WeightedMap.loss_fn = @WeightedFocalLoss()
 weighted_focal_loss/WeightedMap.coefs = [0.1, 0.2, 0.3, 0.5]
