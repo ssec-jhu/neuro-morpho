@@ -71,15 +71,15 @@ class WeightedFocalLoss(torch.nn.Module):
 
 
 @gin.configurable(allowlist=["smooth"])
-class DiceLoss(torch.nn.Module):
-    """Dice Loss for image segmentation.
+class SigmoidDiceLoss(torch.nn.Module):
+    """Dice Loss for image segmentation for binary classification.
 
     This loss is commonly used for image segmentation tasks. It measures the
-    overlap between the predicted and target segmentations.
+    overlap between the predicted and target segmentation.
     """
 
     def __init__(self, smooth=1.0):
-        super(DiceLoss, self).__init__()
+        super(SigmoidDiceLoss, self).__init__()
         self.smooth = smooth
 
     def forward(
@@ -88,6 +88,7 @@ class DiceLoss(torch.nn.Module):
         targets: torch.Tensor | list[torch.Tensor],
     ) -> tuple[str, torch.Tensor]:
         """Calculate the dice loss."""
+        preds = torch.sigmoid(preds)
         numerator = 2 * torch.sum(preds * targets) + self.smooth
         denominator = torch.sum(preds**2) + torch.sum(targets**2) + self.smooth
         soft_dice_loss = 1 - numerator / denominator
