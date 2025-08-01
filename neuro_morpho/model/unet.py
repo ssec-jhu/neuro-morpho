@@ -296,7 +296,8 @@ class UNet(base.BaseModel):
 
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = 1 / (1 + np.exp(-pred))  # Sigmoid activation
 
                     log_metrics(
                         logger=logger,
