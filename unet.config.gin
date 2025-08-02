@@ -59,22 +59,17 @@ validate/v2.Compose.transforms = [
     @v2.CenterCrop(), # Center crop for validation/test images
 ]
 
-ynorm/v2.Compose.transforms = [
-    @Norm2One(),
-    @DownSample(),
-]
-
-
-
 
 train/build_dataloader.x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
 train/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 train/build_dataloader.batch_size = 10
 train/build_dataloader.num_workers = 63
 train/build_dataloader.shuffle = True
+train/build_dataloader.pre_aug_x_transform = @Standardize()
+train/build_dataloader.pre_aug_y_transform = @Norm2One()
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
-train/build_dataloader.x_norm = @Standardize()
-train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+train/build_dataloader.post_aug_x_transform = None
+train/build_dataloader.post_aug_y_transform = @DownSample()
 
 
 validate/build_dataloader.x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
@@ -82,9 +77,11 @@ validate/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 63
 validate/build_dataloader.shuffle = True
+validate/build_dataloader.pre_aug_x_transform = @Standardize()
+validate/build_dataloader.pre_aug_y_transform = @Norm2One()
 validate/build_dataloader.aug_transform = @test/v2.Compose()  # Use the augmentation transforms defined for validating
-validate/build_dataloader.x_norm = @Standardize()
-validate/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+validate/build_dataloader.post_aug_x_transform = None
+validate/build_dataloader.post_aug_y_transform = @DownSample()
 
 
 
