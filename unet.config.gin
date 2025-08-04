@@ -17,7 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = None # "019cae52c3654ebe8deec73b171b1e00"  # Example experiment key (or None)
+CometLogger.experiment_key = None # "019cae52c3654ebe8deec73b171b1e00"  # Experiment key (or None)
 CometLogger.disabled = False
 
 
@@ -65,7 +65,7 @@ train/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/Sim
 train/build_dataloader.batch_size = 10
 train/build_dataloader.num_workers = 63
 train/build_dataloader.shuffle = True
-train/build_dataloader.pre_aug_x_transform = @Standardize()
+train/build_dataloader.pre_aug_x_transform = @Norm2One()
 train/build_dataloader.pre_aug_y_transform = @Norm2One()
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
 train/build_dataloader.post_aug_x_transform = None
@@ -77,7 +77,7 @@ validate/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 63
 validate/build_dataloader.shuffle = True
-validate/build_dataloader.pre_aug_x_transform = @Standardize()
+validate/build_dataloader.pre_aug_x_transform = @Norm2One()
 validate/build_dataloader.pre_aug_y_transform = @Norm2One()
 validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for validating
 validate/build_dataloader.post_aug_x_transform = None
