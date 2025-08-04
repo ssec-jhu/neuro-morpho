@@ -394,7 +394,6 @@ class UNet(base.BaseModel):
         for i in range(n_y):
             for j in range(n_x):
                 tile = image_tiles[i * n_x + j, :, :]
-                tile = (tile - tile.mean()) / (tile.std() + 1e-8)  # Normalize the image as in training module
                 # Start the inferring process
                 tile_flip_0 = cv2.flip(tile, 0)  # Vertical flip
                 tile_flip_1 = cv2.flip(tile, 1)  # Horizontal flip
@@ -488,7 +487,8 @@ class UNet(base.BaseModel):
 
         for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
             image_shape_changed = False
-            image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
             if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
                 if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
                     image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
@@ -500,9 +500,7 @@ class UNet(base.BaseModel):
             pred = self.predict_proba(image, tiler)
             pred = np.squeeze(pred, axis=(0, 1))
             if image_shape_changed:
-                pred = pred[
-                    crop_coord[0] : crop_coord[0] + image.shape[0], crop_coord[1] : crop_coord[1] + image.shape[1]
-                ]
+                pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
 
