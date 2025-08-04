@@ -3,6 +3,7 @@ from pathlib import Path
 import gin
 
 import neuro_morpho.logging.base as log
+import neuro_morpho.reports.generator as generator
 from neuro_morpho.model import base
 
 
@@ -122,3 +123,8 @@ def run(
             threshold=threshold,
             mode=mode,
         )
+
+        if test:
+            generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
+            generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
+            generator.generate_report(model_stats_output_dir, labeled_stats_output_dir, report_output_dir, list())
