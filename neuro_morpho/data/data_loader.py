@@ -63,11 +63,11 @@ class NeuroMorphoDataset(td.Dataset):
         img = self.img_files[index]
         lbl = self.lbl_files[index]
 
-        img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)  # [h, w, 1]
-        lbl = cv2.imread(str(lbl), cv2.IMREAD_GRAYSCALE)  # [h, w, n_lbls]
+        img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)  # [h, w]
+        lbl = cv2.imread(str(lbl), cv2.IMREAD_GRAYSCALE)  # [h, w]
 
-        img = torch.transpose(torch.atleast_3d(torch.from_numpy(img)), 0, 2).float()  # [1, h, w]
-        lbl = torch.transpose(torch.atleast_3d(torch.from_numpy(lbl)), 0, 2).float()  # [n_lbls, h, w]
+        img = torch.permute(torch.atleast_3d(torch.from_numpy(img)), (2, 0, 1)).float()  #[h w] -> [h w 1] -> [1, h, w]
+        lbl = torch.permute(torch.atleast_3d(torch.from_numpy(lbl)), (2, 0, 1)).float()  # [h w] -> [h w 1] -> [1, h, w]
 
         img = img if self.pre_aug_x_transform is None else self.pre_aug_x_transform(img)
         lbl = lbl if self.pre_aug_y_transform is None else self.pre_aug_y_transform(lbl)
