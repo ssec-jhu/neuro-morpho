@@ -488,8 +488,8 @@ class UNet(base.BaseModel):
         for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
             image_shape_changed = False
             img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
-            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            if mode == "infer":  # Extend image size if less thn tile size and create tiling attributes
+            image = (img - img.mean()) / (img.std() + 1e-8)  # Normalize the image as in training module
+            if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
                 if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
                     image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
                     image_shape_changed = True
