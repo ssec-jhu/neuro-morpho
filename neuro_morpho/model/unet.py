@@ -500,7 +500,9 @@ class UNet(base.BaseModel):
             pred = self.predict_proba(image, tiler)
             pred = np.squeeze(pred, axis=(0, 1))
             if image_shape_changed:
-                pred = pred[crop_coord[0] : crop_coord[0] + image.shape[0], crop_coord[1] : crop_coord[1] + image.shape[1]]
+                pred = pred[
+                    crop_coord[0] : crop_coord[0] + image.shape[0], crop_coord[1] : crop_coord[1] + image.shape[1]
+                ]
             pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
             cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
 
