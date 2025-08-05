@@ -205,8 +205,8 @@ class UNet(base.BaseModel):
 
     @gin.register(
         allowlist=[
-            "train_data_loader",
-            "validate_data_loader",
+            "train_data_loader_fn",
+            "validate_data_loader_fn",
             "epochs",
             "optimizer",
             "loss_fn",
@@ -221,12 +221,12 @@ class UNet(base.BaseModel):
     )
     def fit(
         self,
-        training_x_dir: str | Path | None = None,
-        training_y_dir: str | Path | None = None,
-        validating_x_dir: str | Path | None = None,
-        validating_y_dir: str | Path | None = None,
-        train_data_loader: td.DataLoader = None,
-        validate_data_loader: td.DataLoader = None,
+        training_x_dir: str | Path,
+        training_y_dir: str | Path,
+        validating_x_dir: str | Path,
+        validating_y_dir: str | Path,
+        train_data_loader_fn: Callable[[tuple[Path, Path]], td.DataLoader] | None = None,
+        validate_data_loader_fn: Callable[[tuple[Path, Path]], td.DataLoader] | None = None,
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
         loss_fn: loss.LOSS_FN = None,
@@ -242,12 +242,14 @@ class UNet(base.BaseModel):
         """Train the U-Net model.
 
         Args:
-            training_x_dir (str | Path | None, optional): Path to the training input images. Defaults to None.
-            training_y_dir (str | Path | None, optional): Path to the training label images. Defaults to None.
-            validating_x_dir (str | Path | None, optional): Path to the validating input images. Defaults to None.
-            validating_y_dir (str | Path | None, optional): Path to the validating label images. Defaults to None.
-            train_data_loader (td.DataLoader, optional): Dataloader for training. Defaults to None.
-            validate_data_loader (td.DataLoader, optional): Dataloader for validating. Defaults to None.
+            training_x_dir (str | Path): Path to the training input images.
+            training_y_dir (str | Path): Path to the training label images.
+            validating_x_dir (str | Path): Path to the validating input images.
+            validating_y_dir (str | Path): Path to the validating label images.
+            train_data_loader_fn (Callable[[tuple[Path, Path]], td.DataLoader], optional): A function that returns
+                the dataloader for the training set.
+            validate_data_loader_fn (Callable[[tuple[Path, Path]], td.DataLoader], optional): A function that returns
+                the dataloader forthe validation set.
             epochs (int, optional): Number of epochs to train for. Defaults to 1.
             optimizer (torch.optim.Optimizer, optional): The optimizer to use. Defaults to None.
             loss_fn (loss.LOSS_FN, optional): The loss function to use. Defaults to None.
@@ -272,8 +274,11 @@ class UNet(base.BaseModel):
         self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
 
-        train_data_loader = train_data_loader or data_loader.build_dataloader(training_x_dir, training_y_dir)
-        validate_data_loader = validate_data_loader or data_loader.build_dataloader(validating_x_dir, validating_y_dir)
+        train_dl_fn = train_data_loader_fn or data_loader.build_dataloader
+        validate_dl_fn = validate_data_loader_fn or data_loader.build_dataloader
+
+        train_data_loader = train_dl_fn(training_x_dir, training_y_dir)
+        validate_data_loader = validate_dl_fn(validating_x_dir, validating_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
 
@@ -296,7 +301,8 @@ class UNet(base.BaseModel):
 
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = 1 / (1 + np.exp(-pred))  # Sigmoid activation
 
                     log_metrics(
                         logger=logger,
