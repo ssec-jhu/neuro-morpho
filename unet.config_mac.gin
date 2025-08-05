@@ -17,7 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = "019cae52c3654ebe8deec73b171b1e00"
+CometLogger.experiment_key = "ca7960eb37db47e8842226dc30a03006"  # Example experiment key (or None)
 CometLogger.disabled = False
 
 
@@ -59,32 +59,29 @@ validate/v2.Compose.transforms = [
     @v2.CenterCrop(), # Center crop for validation/test images
 ]
 
-ynorm/v2.Compose.transforms = [
-    @Norm2One(),
-    @DownSample(),
-]
-
-
-
 
 train/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
 train/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 train/build_dataloader.batch_size = 10
-train/build_dataloader.num_workers = 11
+train/build_dataloader.num_workers = 1
 train/build_dataloader.shuffle = True
+train/build_dataloader.pre_aug_x_transform = @Standardize()
+train/build_dataloader.pre_aug_y_transform = @Norm2One()
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
-train/build_dataloader.x_norm = @Standardize()
-train/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+train/build_dataloader.post_aug_x_transform = None
+train/build_dataloader.post_aug_y_transform = @DownSample()
 
 
 validate/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 validate/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
 validate/build_dataloader.batch_size = 10
-validate/build_dataloader.num_workers = 11
+validate/build_dataloader.num_workers = 1
 validate/build_dataloader.shuffle = True
+validate/build_dataloader.pre_aug_x_transform = @Standardize()
+validate/build_dataloader.pre_aug_y_transform = @Norm2One()
 validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for validating
-validate/build_dataloader.x_norm = @Standardize()
-validate/build_dataloader.y_norm = @ynorm/v2.Compose()  # Use the normalization transforms defined for labels
+validate/build_dataloader.post_aug_x_transform = None
+validate/build_dataloader.post_aug_y_transform = @DownSample()
 
 
 
@@ -106,8 +103,8 @@ UNet.decoder_channels = [512, 256, 128, 64]
 
 
 UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
-UNet.fit.test_data_loader = @test/build_dataloader()  # Use the testing data loader
-UNet.fit.epochs =   2
+UNet.fit.validate_data_loader = @validate/build_dataloader()  # Use the validating data loader
+UNet.fit.epochs =   10
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
@@ -155,6 +152,7 @@ run.training_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_T
 run.training_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 run.validating_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.validating_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
+run.logger = @CometLogger()
 
 run.get_threshold = False  # Calculate or uplaod threshold for binarization
 
@@ -163,5 +161,3 @@ run.testing_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Ti
 run.testing_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/test/lbls"
 
 run.infer = False # Whether to run the model on the inference set with images of possibly DIFFERENT size
-
-run.logger = @CometLogger()

@@ -296,7 +296,8 @@ class UNet(base.BaseModel):
 
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
-                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = 1 / (1 + np.exp(-pred))  # Sigmoid activation
 
                     log_metrics(
                         logger=logger,
@@ -343,8 +344,9 @@ class UNet(base.BaseModel):
                         y=y,
                     )
                     x = detach_and_move(x, idx=0 if isinstance(x, tuple | list) else None)
-                    pred = torch.sigmoid(detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None))
                     y = detach_and_move(y, idx=0 if isinstance(y, tuple | list) else None)
+                    pred = detach_and_move(pred, idx=0 if isinstance(pred, tuple | list) else None)
+                    pred = 1 / (1 + np.exp(-pred))  # Sigmoid activation
 
                     loss = sum(map(lambda lss: lss[1], losses)) if isinstance(losses, (tuple, list)) else losses[1]
                     metrics_values = [fn(pred, y) for fn in metric_fns]
@@ -402,10 +404,10 @@ class UNet(base.BaseModel):
                     pred, _, _, _ = self.model(tile_torch)
                     pred = torch.sigmoid(pred)
                     pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
-                pred_ori = pred_ori.cpu().numpy()[0, ::]
-                pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy()[0, ::], 0)
-                pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy()[0, ::], 1)
-                pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy()[0, ::], -1)
+                pred_ori = pred_ori.cpu().numpy().squeeze()
+                pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy().squeeze(), 0)
+                pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy().squeeze(), 1)
+                pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy().squeeze(), -1)
                 tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
                 pred_array[
                     i * n_x + j,
@@ -487,7 +489,7 @@ class UNet(base.BaseModel):
             image_shape_changed = False
             img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
             image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            if mode == "infer":  # Extend image size if less thn tile size and create tiling attributes
+            if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
                 if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
                     image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
                     image_shape_changed = True
