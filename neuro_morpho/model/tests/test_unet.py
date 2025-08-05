@@ -384,10 +384,14 @@ def test_fit_no_epochs(tmp_path: Path):
     )
     optimzer = torch.optim.Adam
     model.fit(
+        Path("."),
+        Path("."),
+        Path("."),
+        Path("."),
         models_dir=tmp_path,
         optimizer=optimzer,
-        train_data_loader=iter([]),  # Mock object for testing
-        validate_data_loader=iter([]),  # Mock object for validating
+        train_data_loader_fn=lambda x, y: iter([]),  # Mock object for testing
+        validate_data_loader_fn=lambda x, y: iter([]),  # Mock object for validating
         epochs=1,
         logger=None,
         model_id=model_id,

@@ -100,7 +100,7 @@ def run(
         test: Run the model on the test set, consisting of same size images in testing_x_dir
         and its labels in testing_y_dir. The process includes threshold calculation for binarization purposes,
         usiing the validation images in validating_x_dir and their labels in validating_y_dir.
-        
+
         infer: Run the model on the inference set, consisting of images in testing_x_dir. Images could be
         of different size, and the threshold should be provided.
     """

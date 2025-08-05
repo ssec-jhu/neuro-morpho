@@ -60,8 +60,6 @@ validate/v2.Compose.transforms = [
 ]
 
 
-train/build_dataloader.x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
-train/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 train/build_dataloader.batch_size = 10
 train/build_dataloader.num_workers = 63
 train/build_dataloader.shuffle = True
@@ -72,8 +70,6 @@ train/build_dataloader.post_aug_x_transform = None
 train/build_dataloader.post_aug_y_transform = @DownSample()
 
 
-validate/build_dataloader.x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
-validate/build_dataloader.y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 63
 validate/build_dataloader.shuffle = True
@@ -102,8 +98,8 @@ UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
 
 
-UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
-UNet.fit.validate_data_loader = @validate/build_dataloader()  # Use the validating data loader
+UNet.fit.train_data_loader = @train/build_dataloader  # Use the training data loader
+UNet.fit.validate_data_loader = @validate/build_dataloader  # Use the validating data loader
 UNet.fit.epochs =   20
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
