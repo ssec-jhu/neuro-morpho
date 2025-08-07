@@ -17,7 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = None # "019cae52c3654ebe8deec73b171b1e00"  # Experiment key (or None)
+CometLogger.experiment_key = None
 CometLogger.disabled = False
 
 
@@ -83,12 +83,19 @@ validate/build_dataloader.post_aug_y_transform = @DownSample()
 
 CombinedLoss.weights = (
     1.0,  # weight for dice
-    0.5,  # weight for focal loss
+    200,  # weight for focal loss
 )
 CombinedLoss.losses = (
     @dice/WeightedMap(),          # First loss function (Dice)
     @weighted_focal_loss/WeightedMap(), # Second loss function (Focal Loss)
 )
+
+torch.optim.SGD.lr = 0.02
+torch.optim.SGD.momentum = 0.9
+torch.optim.SGD.weight_decay = 1e-5
+
+torch.optim.lr_scheduler.CosineAnnealingWarmRestarts.T_0 = 200
+torch.optim.lr_scheduler.CosineAnnealingWarmRestarts.T_mult = 1
 
 ChannelAttention.ratio = 16
 
@@ -102,6 +109,7 @@ UNet.fit.train_data_loader = @train/build_dataloader  # Use the training data lo
 UNet.fit.validate_data_loader = @validate/build_dataloader  # Use the validating data loader
 UNet.fit.epochs =   20
 UNet.fit.optimizer = @torch.optim.Adam
+UNet.fit.lr_scheduler = @torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
     @pos/class_accuracy,

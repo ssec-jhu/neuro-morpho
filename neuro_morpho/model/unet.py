@@ -229,6 +229,7 @@ class UNet(base.BaseModel):
         validate_data_loader_fn: Callable[[tuple[Path, Path]], td.DataLoader] | None = None,
         epochs: int = 1,
         optimizer: torch.optim.Optimizer = None,
+        lr_scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
         loss_fn: loss.LOSS_FN = None,
         metric_fns: list[metrics.METRIC_FN] | None = None,
         logger: base_logging.Logger = None,
@@ -281,6 +282,8 @@ class UNet(base.BaseModel):
         validate_data_loader = validate_dl_fn(validating_x_dir, validating_y_dir)
 
         optimizer = optimizer(params=self.model.parameters())
+        if lr_scheduler is not None:
+            lr_scheduler = lr_scheduler(optimizer=optimizer)
 
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
@@ -370,6 +373,8 @@ class UNet(base.BaseModel):
                     is_train=False,
                     step=step,
                 )
+            if lr_scheduler is not None:
+                lr_scheduler.step()
 
         # After all epochs save a copy in the models_dir
         self.save(model_dir / "model.pt")
