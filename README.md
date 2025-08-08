@@ -75,7 +75,7 @@ For additional cmds see the [Conda cheat-sheet](https://docs.conda.io/projects/c
 Follow the above [Quickstart](#quickstart) or [Build with Python ecosystem instructions](#with-python-ecosystem).
 
 # Preprocessing
-Run neuro_morpho/notebooks/data_organizer notebook to partition the data to three disjoint groups: training, validation and test sets.
+Run ``neuro_morpho/notebooks/data_organizer.ipynb`` notebook to partition the data to three disjoint groups: training, validation and test sets.
 The partition ratios are hardocded in notebook and set currently on 60% of data going to training, 20% to validation and 20% to testing.
 
 # Main pipeline
@@ -87,7 +87,7 @@ python -m neuro_morpho.cli
 command runs the pipeline that consists of 4 separate modules:
 Each one of them can be run separately, or alternatively, all 4 can be run one afrter another.
 
-# Training.
+# Training
 The relevant params in config file are:
 ```run.train = True
 run.training_x_dir = "/Path/to/training/images"
@@ -97,18 +97,18 @@ run.validating_y_dir = "/Path/to/validation/labels"
 run.logger = @CometLogger()
 ```
 
-# Threshold calculation.
+# Threshold calculation
 The relevant param in config file is:
 ```run.get_threshold = True```
 
-# Testing.
+# Testing
 The relevant params in config file are:
 ```run.test = True
 run.testing_x_dir = "/Path/to/testing/images"
 run.testing_y_dir = "/Path/to/testing/labels"
 ```
 
-# Image inference.
+# Image inference
 The relevant params in config file are:
 ```run.infer = True```
 and the same paths to use as in case of testing
