@@ -32,7 +32,7 @@ templates_path = ['_templates']
 
 autoapi_dirs = ['../../neuro_morpho']
 autoapi_add_toctree_entry = True
-autoapi_ignore = ['*test*']
+autoapi_ignore = ['*tests*', '*_version.py']
 
 # -- Options for HTML output
 
