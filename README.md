@@ -9,34 +9,34 @@
 
 ![SSEC-JHU Logo](docs/_static/SSEC_logo_horiz_blue_1152x263.png)
 
-Base repo template to be used by all others.
+B# Neural Morphology (Neuro-Morpho)
 
-Things to do when using this template:
+Neurons form complex dendritic arbors to integrate signals from many sources at once. The
+structure of a neuron is so essential to its function that classes of neuron can be identified by
+their structure alone. Additionally, the morphology of a neuron gives important insights into the
+mechanisms of nervous system development and disfunction. Therefore, software that can
+accurately trace the structure of the dendritic arbor is essential. This software shouldn’t require human supervision, which is time-consuming and introduces biases and inconsistencies, and should keep pace with modern imaging techniques that can rapidly generate large datasets.
+To address these issues, we propose developing open-source software based on convolutional
+neural networks (CNNs - specifically Unet) to segment/skeletonize neural dendrites.
 
- * Run ```python project_setup.py```
- * Uncomment above DOI in README.md and correct ``<insert_ID_number>``.
- * Correct "description" field in .zenodo.json to reflect description of child repo.
- * Correct the ``CI Status`` badge with the correct token in the URL.
- * Import package into https://readthedocs.org/.
 
-What's included in this template:
+# Quickstart
 
- * Licence file
- * Code of Conduct
- * Build & Setup, inc. ``pip`` dependency requirements.
- * Dependabot GitHub action
- * CI for GitHub actions: lint, pytest, build & publish docker image to GitHub Packages.
- * Dockerfile.
- * Pytest example(s).
- * Githooks.
+```term
+pip install git+https://github.com/ssec-jhu/neuro-morpho.git
+```
+
+See [Usage](#usage) for quick and easy usage instructions for this Python package.
+
+To start using the application for training/ testing purposes run:
+```term
+pip install -r requirements/all.txt
+pip install -e .
+python -m  neuro_morpho.cli 
+```
 
 # Installation, Build, & Run instructions
 
-
-### Git LFS:
-
- * This repo uses git Large File Storage (git-lfs) for tracking data files, i.e., image file. To download these data
-   files git-lfs is required. To install git-lfs please follow these [git-lfs instructions](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage).  
 
 ### Conda:
 
@@ -53,11 +53,6 @@ For additional cmds see the [Conda cheat-sheet](https://docs.conda.io/projects/c
 
 ### Build:
 
-  #### with Docker:
-  * Download & install Docker - see [Docker install docs](https://docs.docker.com/get-docker/).
-  * ``cd`` into repo dir.
-  * Build image: ``docker build -t <image_name> .``
-
   #### with Python ecosystem:
   * ``cd`` into repo dir.
   * ``conda activate <environment_name>``
@@ -67,20 +62,56 @@ For additional cmds see the [Conda cheat-sheet](https://docs.conda.io/projects/c
     ``pip install -e .``.
     _NOTE: If you didn't install dependencies from ``requirements/dev.txt``, you can install
     a looser constrained set of deps using: ``pip install -e .[dev]``._
+    _NOTE:
+    For GPU acceleration PyTorch can be re-installed with their accelerator options.
+    For PyTorch see the [PyTorch installation docs](https://pytorch.org/get-started/locally/).
+    E.g., ``pip install --force -r requirements/pytorch.txt --index-url https://download.pytorch.org/whl/cu126``.
+    Since it's installed via ``requirements/prd.txt``, ``--force``or ``--upgrade`` must  be used to re-install
+    the accelerator versions.  ``--force`` is preferable as it will error if the distribution is not available
+    at the given url index, however ``--upgrade`` may not.
 
-### Run
+### Usage
 
-  #### with Docker:
-  * Follow the above [Build with Docker instructions](#with-docker).
-  * Run container from image: ``docker run -d -p 8000:8000 <image_name>``. _NOTE: ``-p 8000:8000`` is specific to the example application using port 8000._
-  * Alternatively, images can be pulled from ``ghcr.io/ssec-jhu/`` e.g., ``docker pull ghcr.io/git@github.com:ssec-jhu/neuro-morpho:pr-1``.
+Follow the above [Quickstart](#quickstart) or [Build with Python ecosystem instructions](#with-python-ecosystem).
 
-  #### with Python ecosystem:
-  * Follow the above [Build with Python ecosystem instructions](#with-python-ecosystem).
-  * Run ``uvicorn neuro_morpho.app.main:app --host 0.0.0.0 --port", "8000``. _NOTE: This is just an example and is obviously application dependent._
+# Preprocessing
+Run neuro_morpho/notebooks/data_organizer notebook to partition the data to three disjoint groups: training, validation and test sets.
+The partition ratios are hardocded in notebook and set currently on 60% of data going to training, 20% to validation and 20% to testing.
 
-### Usage:
-To be completed by child repo.
+# Main pipeline
+Pipeline configuration is maintained in ``unet.config.gin`` file.
+Using the command line interface (i.e., from a terminal prompt):
+```term
+python -m neuro_morpho.cli
+```
+command runs the pipeline that consists of 4 separate modules:
+Each one of them can be run separately, or alternatively, all 4 can be run one afrter another.
+
+# Training.
+The relevant params in config file are:
+```run.train = True
+run.training_x_dir = "/Path/to/training/images"
+run.training_y_dir = "/Path/to/training/labels"
+run.validating_x_dir = "/Path/to/validation/images"
+run.validating_y_dir = "/Path/to/validation/labels"
+run.logger = @CometLogger()
+```
+
+# Threshold calculation.
+The relevant param in config file is:
+```run.get_threshold = True```
+
+# Testing.
+The relevant params in config file are:
+```run.test = True
+run.testing_x_dir = "/Path/to/testing/images"
+run.testing_y_dir = "/Path/to/testing/labels"
+```
+
+# Image inference.
+The relevant params in config file are:
+```run.infer = True```
+and the same paths to use as in case of testing
 
 
 # Testing
