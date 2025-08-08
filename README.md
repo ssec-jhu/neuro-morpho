@@ -9,7 +9,7 @@
 
 ![SSEC-JHU Logo](docs/_static/SSEC_logo_horiz_blue_1152x263.png)
 
-B# Neural Morphology (Neuro-Morpho)
+# Neural Morphology (Neuro-Morpho)
 
 Neurons form complex dendritic arbors to integrate signals from many sources at once. The
 structure of a neuron is so essential to its function that classes of neuron can be identified by
