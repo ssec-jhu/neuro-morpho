@@ -19,7 +19,7 @@ def plot_triplet(
     Returns:
         plt.Figure: Figure containing the triplet plot.
     """
-    fig, (ax_x, ax_pred, ax_y) = plt.subplots(ncols=3, nrows=1, figsize=(30, 10))
+    fig, (ax_x, ax_pred, ax_y, ax_hist) = plt.subplots(ncols=4, nrows=1, figsize=(40, 10))
     ax_x.imshow(np.log(in_img), cmap="Greys_r")
     ax_x.set_title("log(Input)")
     ax_x.axis("off")
@@ -29,5 +29,7 @@ def plot_triplet(
     ax_y.imshow(lbl_img, cmap="Greys_r")
     ax_y.set_title("Label")
     ax_y.axis("off")
+    ax_hist.hist(out_img.flatten(), bins=100, color="blue", alpha=0.5, log=True, label="Input")
+    ax_hist.set_title("Output Values")
 
     return fig
