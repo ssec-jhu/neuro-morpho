@@ -80,7 +80,7 @@ class CometLogger(base.Logger):
         ax_y.imshow(lbl_img, cmap="Greys_r")
         ax_y.set_title("Label")
         ax_y.axis("off")
-        ax_hist.hist(out_img.flatten(), bins=100, color="blue", alpha=0.5, log=True, label="Input")
+        ax_hist.hist(out_img.flatten(), bins=100, color="blue", alpha=0.5, log=True, label="Input", range=(0, 1))
         ax_hist.set_title("Output Values")
 
         ctx = self.experiment.train if train else self.experiment.test
