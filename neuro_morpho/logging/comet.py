@@ -81,6 +81,7 @@ class CometLogger(base.Logger):
         ax_y.set_title("Label")
         ax_y.axis("off")
         ax_hist.hist(out_img.flatten(), bins=100, color="blue", alpha=0.5, log=True, label="Input", range=(0, 1))
+        ax_hist.set_aspect(1.0 / ax_hist.get_data_ratio(), adjustable="box")
         ax_hist.set_title("Output Values")
 
         ctx = self.experiment.train if train else self.experiment.test
