@@ -284,7 +284,7 @@ class UNet(base.BaseModel):
         validate_data_loader = validate_dl_fn(validating_x_dir, validating_y_dir)
 
         if lr_scheduler is not None:
-            lr_scheduler = lr_scheduler(optimizer=optimizer)
+            lr_scheduler = lr_scheduler(optimizer=self.optimizer)
 
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
