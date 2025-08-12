@@ -209,6 +209,7 @@ class UNet(base.BaseModel):
             "validate_data_loader_fn",
             "epochs",
             "optimizer",
+            "lr_scheduler",
             "loss_fn",
             "metric_fns",
             "logger",
