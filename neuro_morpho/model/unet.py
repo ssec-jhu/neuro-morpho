@@ -271,6 +271,7 @@ class UNet(base.BaseModel):
         checkpoint_dir = model_dir / "checkpoints"
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+        self.optimizer = optimizer(params=self.model.parameters())
         self.load_checkpoint(checkpoint_dir)
         step = self.step if hasattr(self, "step") else init_step
 
@@ -280,8 +281,6 @@ class UNet(base.BaseModel):
         train_data_loader = train_dl_fn(training_x_dir, training_y_dir)
         validate_data_loader = validate_dl_fn(validating_x_dir, validating_y_dir)
 
-        optimizer = optimizer(params=self.model.parameters())
-
         for _ in tqdm(range(epochs), desc="Epochs", unit="epoch", position=0):
             self.model.train()
             # x: b, 1, h, w
@@ -290,7 +289,7 @@ class UNet(base.BaseModel):
             for x, y in maybe_pbar(training_iter, desc="Training", unit="batch", position=1, steps_bar=steps_bar):
                 pred, losses = train_step(
                     model=self.model,
-                    optimizer=optimizer,
+                    optimizer=self.optimizer,
                     loss_fn=loss_fn,
                     x=x,
                     y=y,
@@ -710,7 +709,11 @@ class UNet(base.BaseModel):
         """
         path = Path(path)
         torch.save(
-            {"model_state_dict": self.model.state_dict(), "step": getattr(self, "step", 0)},
+            {
+                "model_state_dict": self.model.state_dict(),
+                "step": getattr(self, "step", 0),
+                "optimizer_state_dict": self.optimizer.state_dict() if hasattr(self, "optimizer") else None,
+            },
             path,
         )
 
@@ -728,6 +731,10 @@ class UNet(base.BaseModel):
         self.model.load_state_dict(data["model_state_dict"])
         self.model.to(self.device)
         self.step = data.get("step", 0)
+        # if we're training we have an optimizer.
+        # If not, we don't need to load the optimizer state_dict.
+        if hasattr(self, "optimizer"):
+            self.optimizer.load_state_dict(data["optimizer_state_dict"])
 
     def save_threshold(self, model_dir: Path | str, threshold: float) -> None:
         """Save a binarization threshold for a given model.
