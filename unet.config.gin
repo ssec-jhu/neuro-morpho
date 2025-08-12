@@ -56,7 +56,7 @@ train/v2.Compose.transforms = [
 validate/v2.Compose.transforms = [
     @v2.ToImage(),
     @v2.ToDtype(),
-    @v2.CenterCrop(), # Center crop for validation/test images
+    @v2.CenterCrop(), # Center crop for validation images
 ]
 
 
@@ -105,8 +105,8 @@ UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
 
 
-UNet.fit.train_data_loader = @train/build_dataloader  # Use the training data loader
-UNet.fit.validate_data_loader = @validate/build_dataloader  # Use the validating data loader
+UNet.fit.train_data_loader_fn = @train/build_dataloader  # Use the training data loader
+UNet.fit.validate_data_loader_fn = @validate/build_dataloader  # Use the validating data loader
 UNet.fit.epochs =   20
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.lr_scheduler = @torch.optim.lr_scheduler.CosineAnnealingWarmRestarts

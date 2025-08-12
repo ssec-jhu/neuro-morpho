@@ -17,7 +17,7 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = "ca7960eb37db47e8842226dc30a03006"  # Example experiment key (or None)
+CometLogger.experiment_key = "c9678b0b39a04d27a80fff8b728880d0" # "e6b2ad4d2eea4096a2fe181aee182b5f"  # Example experiment key (or None)
 CometLogger.disabled = False
 
 
@@ -56,28 +56,24 @@ train/v2.Compose.transforms = [
 validate/v2.Compose.transforms = [
     @v2.ToImage(),
     @v2.ToDtype(),
-    @v2.CenterCrop(), # Center crop for validation/test images
+    @v2.CenterCrop(), # Center crop for validation images
 ]
 
 
-train/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
-train/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 train/build_dataloader.batch_size = 10
 train/build_dataloader.num_workers = 1
 train/build_dataloader.shuffle = True
-train/build_dataloader.pre_aug_x_transform = @Standardize()
+train/build_dataloader.pre_aug_x_transform = @Norm2One()
 train/build_dataloader.pre_aug_y_transform = @Norm2One()
 train/build_dataloader.aug_transform = @train/v2.Compose()  # Use the augmentation transforms defined for training
 train/build_dataloader.post_aug_x_transform = None
 train/build_dataloader.post_aug_y_transform = @DownSample()
 
 
-validate/build_dataloader.x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
-validate/build_dataloader.y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
 validate/build_dataloader.batch_size = 10
 validate/build_dataloader.num_workers = 1
 validate/build_dataloader.shuffle = True
-validate/build_dataloader.pre_aug_x_transform = @Standardize()
+validate/build_dataloader.pre_aug_x_transform = @Norm2One()
 validate/build_dataloader.pre_aug_y_transform = @Norm2One()
 validate/build_dataloader.aug_transform = @validate/v2.Compose()  # Use the augmentation transforms defined for validating
 validate/build_dataloader.post_aug_x_transform = None
@@ -102,9 +98,9 @@ UNet.encoder_channels = [64, 128, 256, 512, 1024]
 UNet.decoder_channels = [512, 256, 128, 64]
 
 
-UNet.fit.train_data_loader = @train/build_dataloader()  # Use the training data loader
-UNet.fit.validate_data_loader = @validate/build_dataloader()  # Use the validating data loader
-UNet.fit.epochs =   10
+UNet.fit.train_data_loader_fn = @train/build_dataloader  # Use the training data loader
+UNet.fit.validate_data_loader_fn = @validate/build_dataloader  # Use the validating data loader
+UNet.fit.epochs =   2
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
