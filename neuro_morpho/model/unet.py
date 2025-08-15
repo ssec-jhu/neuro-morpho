@@ -490,6 +490,7 @@ class UNet(base.BaseModel):
             image_size = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED).shape[:2]
             tiler.get_tiling_attributes(image_size)
 
+        self.model.eval()
         for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
             image_shape_changed = False
             img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
