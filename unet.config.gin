@@ -150,7 +150,7 @@ run.validating_x_dir = "/home/idies/workspace/ssec_neural_morphology/Simulations
 run.validating_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.logger = @CometLogger()
 
-run.get_threshold = True  # Calculate or uplaod threshold for binarization
+run.get_threshold = True  # Calculate or upload threshold for binarization
 
 run.test = True # Whether to run the model on the test set with images of the SAME size
 run.testing_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/test/imgs"
