@@ -584,10 +584,11 @@ class UNet(base.BaseModel):
         with tqdm(
             zip(img_paths, lbl_paths),
             total=len(img_paths),
-            desc="Processing images for threshold calculation"
+            desc="Inferring images for threshold calculation",
+            dynamic_ncols=True,
         ) as pbar:
             for img_path, lbl_path in pbar:
-                pbar.set_description(f"Inferring images for threshold calculation: {img_path.name}")
+                pbar.set_postfix(file=img_path.name, refresh=False)
                 if not img_path.exists() or not lbl_path.exists():
                     raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
                 # Read the image and target
@@ -617,9 +618,10 @@ class UNet(base.BaseModel):
         with tqdm(
             thresholds,
             total=len(thresholds),
+            dynamic_ncols=True,
         ) as pbar:
             for threshold in pbar:
-                pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}")
+                pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}", refresh=False)
                 preds_ = preds.copy()
                 preds_[preds_ >= threshold] = 1
                 preds_[preds_ < threshold] = 0
