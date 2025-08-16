@@ -581,44 +581,49 @@ class UNet(base.BaseModel):
         labels = list()
 
         # Read images and labels
-        for img_path, lbl_path in tqdm(
-            zip(img_paths, lbl_paths, strict=False),
+        with tqdm(
+            zip(img_paths, lbl_paths),
             total=len(img_paths),
-            desc="Processing images for threshold calculation",
-        ):
-            if not img_path.exists() or not lbl_path.exists():
-                raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
-            # Read the image and target
-            image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED) / 255.0
-            image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
-            label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
-            label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
-            if image is None or label is None:
-                raise ValueError(
-                    f"Could not read image {img_path} or label {lbl_path}. Ensure they are valid image files."
-                )
-            # Get soft prediction for the image
-            print("Image: ", img_path.name)
-            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
-            pred = self.predict_proba(image, tiler)
-            if pred is None:
-                raise ValueError(f"Could not get soft prediction for image {img_path}.")
+            desc="Processing images for threshold calculation"
+        ) as pbar:
+            for img_path, lbl_path in pbar:
+                pbar.set_description(f"Inferring images for threshold calculation: {img_path.name}")
+                if not img_path.exists() or not lbl_path.exists():
+                    raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
+                # Read the image and target
+                image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+                image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
+                label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
+                label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
+                if image is None or label is None:
+                    raise ValueError(
+                        f"Could not read image {img_path} or label {lbl_path}. Ensure they are valid image files."
+                    )
+                # Get soft prediction for the image
+                image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+                pred = self.predict_proba(image, tiler)
+                if pred is None:
+                    raise ValueError(f"Could not get soft prediction for image {img_path}.")
 
-            pred = np.squeeze(pred, axis=(0, 1))
-            cv2.imwrite(str(img_path.with_suffix(".pred.tif")), (pred * 255).astype(np.uint8))
-            preds.append(pred)
-            labels.append(label)
+                pred = np.squeeze(pred, axis=(0, 1))
+                preds.append(pred)
+                labels.append(label)
 
         preds = np.stack(preds)
         labels = np.stack(labels)
 
         f1s = list()
         thresholds = np.stack(list(range(40, 80))) / 100
-        for threshold in tqdm(thresholds):
-            preds_ = preds.copy()
-            preds_[preds_ >= threshold] = 1
-            preds_[preds_ < threshold] = 0
-            f1s.append(f1_score(preds_.reshape(-1), labels.reshape(-1)))
+        with tqdm(
+            thresholds,
+            total=len(thresholds),
+        ) as pbar:
+            for threshold in pbar:
+                pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}")
+                preds_ = preds.copy()
+                preds_[preds_ >= threshold] = 1
+                preds_[preds_ < threshold] = 0
+                f1s.append(f1_score(preds_.reshape(-1), labels.reshape(-1)))
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
         self.save_threshold(model_dir, threshold)
@@ -728,6 +733,7 @@ class UNet(base.BaseModel):
         thresh_file_path = model_dir / "threshold.csv"
         with open(thresh_file_path, "w") as f:
             f.write(f"{threshold}\n")
+            print(f"The threshold for the given model is found to be {threshold:.2f} and has been saved.")
 
     def load_threshold(self, model_dir: Path | str) -> float:
         """Load the threshold from a given model path.
@@ -746,6 +752,7 @@ class UNet(base.BaseModel):
         else:
             with open(thresh_file_path) as f:
                 threshold = float(f.read().strip())
+                print(f"The threshold for the given model exists: {threshold:.2f} and has been loaded.")
 
         return threshold
 
