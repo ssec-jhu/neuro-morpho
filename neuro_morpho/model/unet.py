@@ -396,6 +396,7 @@ class UNet(base.BaseModel):
 
         n_x, n_y = len(tiler.x_coords), len(tiler.y_coords)
         pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+        self.model.eval()
         for i in range(n_y):
             for j in range(n_x):
                 tile = image_tiles[i * n_x + j, :, :]
@@ -490,41 +491,48 @@ class UNet(base.BaseModel):
             image_size = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED).shape[:2]
             tiler.get_tiling_attributes(image_size)
 
-        self.model.eval()
-        for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
-            image_shape_changed = False
-            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
-            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
-                if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
-                    image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
-                    image_shape_changed = True
-                tiler.get_tiling_attributes(image.shape[:2])
-            # Get soft prediction for the image
-            print("Getting soft prediction for the image ", img_path.name)
-            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
-            pred = self.predict_proba(image, tiler)
-            pred = np.squeeze(pred, axis=(0, 1))
-            if image_shape_changed:
-                pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
-            pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
-            cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
+        with tqdm(
+            img_paths,
+            total=len(img_paths),
+            desc="Inferring images for prediction purpose",
+            dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
+        ) as pbar:
+            for img_path in pbar:
+                pbar.set_postfix(file=img_path.name, refresh=False)
+                image_shape_changed = False
+                img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+                image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
+                if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
+                    if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
+                        image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
+                        image_shape_changed = True
+                    tiler.get_tiling_attributes(image.shape[:2])
+                # Get soft prediction for the image
+                print("Getting soft prediction for the image ", img_path.name)
+                image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+                pred = self.predict_proba(image, tiler)
+                pred = np.squeeze(pred, axis=(0, 1))
+                if image_shape_changed:
+                    pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
+                pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
+                cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
 
-            if binarize:  # Get hard prediction for the image
-                print("Getting hard prediction for the image ", pred_path.name)
-                pred_bin = pred.copy()
-                pred_bin[pred_bin >= threshold] = 1
-                pred_bin[pred_bin < threshold] = 0
-                pred_bin = (pred_bin * 255).astype(np.uint8)
-                pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
-                cv2.imwrite(pred_bin_path, pred_bin)
+                if binarize:  # Get hard prediction for the image
+                    print("Getting hard prediction for the image ", pred_path.name)
+                    pred_bin = pred.copy()
+                    pred_bin[pred_bin >= threshold] = 1
+                    pred_bin[pred_bin < threshold] = 0
+                    pred_bin = (pred_bin * 255).astype(np.uint8)
+                    pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
+                    cv2.imwrite(pred_bin_path, pred_bin)
 
-            if fix_breaks:
-                breaks_analyzer = BreaksAnalyzer()
-                print("Fixing breaks for the image ", pred_bin_path.name)
-                pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
-                pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
-                cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+                #if fix_breaks:
+                #    breaks_analyzer = BreaksAnalyzer()
+                #    print("Fixing breaks for the image ", pred_bin_path.name)
+                #    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
+                #    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                #    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     @gin.register(
         allowlist=[
@@ -595,7 +603,8 @@ class UNet(base.BaseModel):
                 image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
                 image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
                 label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
-                label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
+                label = (label.astype(np.float32) / label.max()).astype(np.uint8)
+                # label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
                 if image is None or label is None:
                     raise ValueError(
                         f"Could not read image {img_path} or label {lbl_path}. Ensure they are valid image files."
@@ -614,7 +623,7 @@ class UNet(base.BaseModel):
         labels = np.stack(labels)
 
         f1s = list()
-        thresholds = np.stack(list(range(40, 80))) / 100
+        thresholds = np.stack(list(range(0, 100))) / 100
         with tqdm(
             thresholds,
             total=len(thresholds),
@@ -622,10 +631,11 @@ class UNet(base.BaseModel):
         ) as pbar:
             for threshold in pbar:
                 pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}", refresh=False)
-                preds_ = preds.copy()
-                preds_[preds_ >= threshold] = 1
-                preds_[preds_ < threshold] = 0
-                f1s.append(f1_score(preds_.reshape(-1), labels.reshape(-1)))
+                # preds_ = preds.copy()
+                # preds_[preds_ >= threshold] = 1
+                # preds_[preds_ < threshold] = 0
+                preds_bin = (preds >= threshold).astype(np.uint8)
+                f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
         self.save_threshold(model_dir, threshold)

@@ -146,14 +146,14 @@ run.report_output_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNe
 run.train = False
 run.training_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
 run.training_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
-run.validating_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
-run.validating_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls"
+run.validating_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs1"
+run.validating_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/val/lbls1"
 run.logger = @CometLogger()
 
 run.get_threshold = True  # Calculate or upload threshold for binarization
 
 run.test = True # Whether to run the model on the test set with images of the SAME size
-run.testing_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/test/imgs"
-run.testing_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/test/lbls"
+run.testing_x_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/test/imgs1"
+run.testing_y_dir = "/Users/vkluzner/OneDrive/NeuralMorphology/SimulationsNew_Tif3334/neuro-morpho/test/lbls1"
 
 run.infer = False # Whether to run the model on the inference set with images of possibly DIFFERENT size
