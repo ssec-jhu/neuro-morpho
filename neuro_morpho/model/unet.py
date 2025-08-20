@@ -395,6 +395,7 @@ class UNet(base.BaseModel):
 
         n_x, n_y = len(tiler.x_coords), len(tiler.y_coords)
         pred_array = np.zeros((n_x * n_y, image_size[0], image_size[1]), dtype=np.float32)
+        self.model.eval()
         for i in range(n_y):
             for j in range(n_x):
                 tile = image_tiles[i * n_x + j, :, :]
