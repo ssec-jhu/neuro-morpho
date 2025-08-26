@@ -493,7 +493,7 @@ class UNet(base.BaseModel):
         with tqdm(
             img_paths,
             total=len(img_paths),
-            desc="Inferring images for prediction purpose",
+            desc="Inferring images for prediction purposes",
             dynamic_ncols=True,
             leave=False,  # prevents lingering duplicate line
         ) as pbar:
@@ -526,12 +526,12 @@ class UNet(base.BaseModel):
                     pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
                     cv2.imwrite(pred_bin_path, pred_bin)
 
-                #if fix_breaks:
-                #    breaks_analyzer = BreaksAnalyzer()
-                #    print("Fixing breaks for the image ", pred_bin_path.name)
-                #    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
-                #    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
-                #    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+                if fix_breaks:
+                    breaks_analyzer = BreaksAnalyzer()
+                    print("Fixing breaks for the image ", pred_bin_path.name)
+                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
+                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     @gin.register(
         allowlist=[
@@ -593,6 +593,7 @@ class UNet(base.BaseModel):
             total=len(img_paths),
             desc="Inferring images for threshold calculation",
             dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
         ) as pbar:
             for img_path, lbl_path in pbar:
                 pbar.set_postfix(file=img_path.name, refresh=False)
@@ -627,6 +628,7 @@ class UNet(base.BaseModel):
             thresholds,
             total=len(thresholds),
             dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
         ) as pbar:
             for threshold in pbar:
                 pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}", refresh=False)
