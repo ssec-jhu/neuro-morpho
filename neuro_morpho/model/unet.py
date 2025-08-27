@@ -637,6 +637,10 @@ class UNet(base.BaseModel):
                 # preds_[preds_ < threshold] = 0
                 preds_bin = (preds >= threshold).astype(np.uint8)
                 f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
+                
+        for t, f in zip(thresholds, f1s):
+            print(f"Threshold = {t:.2f}\tF1 = {f:.4f}")
+    
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
         self.save_threshold(model_dir, threshold)
