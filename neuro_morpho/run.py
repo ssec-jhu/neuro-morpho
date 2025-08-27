@@ -127,4 +127,4 @@ def run(
         if test:
             generator.generate_statistics(model_out_y_dir, model_stats_output_dir)
             generator.generate_statistics(testing_y_dir, labeled_stats_output_dir)
-            generator.generate_report(model_stats_output_dir, labeled_stats_output_dir, report_output_dir, list())
+            generator.generate_report(model_stats_output_dir, labeled_stats_output_dir, report_output_dir)
