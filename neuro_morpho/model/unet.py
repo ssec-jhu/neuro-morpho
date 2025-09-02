@@ -38,7 +38,7 @@ import gin
 import numpy as np
 import torch
 import torch.utils.data as td
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
 from torch import nn
 from tqdm import tqdm
 from typing_extensions import override
@@ -160,7 +160,18 @@ def maybe_pbar(iterable, desc: str, unit: str, position: int, steps_bar: bool) -
         return tqdm(iterable, desc=desc, unit=unit, position=position)
     return iterable
 
+def global_f1(preds, labels):
+    total_tp = total_fp = total_fn = 0
 
+    for p, l in zip(preds, labels):  # iterate image by image
+        tn, fp, fn, tp = confusion_matrix(l.ravel(), p.ravel(), labels=[0,1]).ravel()
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) else 0
+    recall    = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0
+    return 2 * precision * recall / (precision + recall) if (precision + recall) else 0
 @gin.register
 class UNet(base.BaseModel):
     """U-Net model for image segmentation.
@@ -636,7 +647,8 @@ class UNet(base.BaseModel):
                 # preds_[preds_ >= threshold] = 1
                 # preds_[preds_ < threshold] = 0
                 preds_bin = (preds >= threshold).astype(np.uint8)
-                f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
+                # f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
+                f1s.append(global_f1(preds_bin, labels))
                 
         for t, f in zip(thresholds, f1s):
             print(f"Threshold = {t:.2f}\tF1 = {f:.4f}")
