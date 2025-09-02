@@ -555,6 +555,7 @@ class UNet(base.BaseModel):
         img_dir: str | Path,
         lbl_dir: str | Path,
         model_dir: str | Path,
+        model_out_val_y_dir: str | Path,
         tile_size: tuple[int, int] = (512, 512),
         tile_assembly: str = "nn",
     ) -> float:
@@ -577,6 +578,9 @@ class UNet(base.BaseModel):
 
         if img_dir is None or lbl_dir is None:
             raise ValueError("Both image and label directories must be provided.")
+
+        model_out_val_y_dir = Path(model_out_val_y_dir)
+        model_out_val_y_dir.mkdir(parents=True, exist_ok=True)
 
         img_dir = Path(img_dir)
         lbl_dir = Path(lbl_dir)
@@ -625,8 +629,10 @@ class UNet(base.BaseModel):
                 pred = self.predict_proba(image, tiler)
                 if pred is None:
                     raise ValueError(f"Could not get soft prediction for image {img_path}.")
-
-                pred = np.squeeze(pred, axis=(0, 1))
+                
+                pred = np.squeeze(pred, axis=(0, 1))   
+                pred_path = model_out_val_y_dir / f"{img_path.stem}_pred{img_path.suffix}"
+                cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
                 preds.append(pred)
                 labels.append(label)
 
@@ -634,7 +640,7 @@ class UNet(base.BaseModel):
         labels = np.stack(labels)
 
         f1s = list()
-        thresholds = np.stack(list(range(0, 100))) / 100
+        thresholds = np.stack(list(range(20, 70))) / 100
         with tqdm(
             thresholds,
             total=len(thresholds),

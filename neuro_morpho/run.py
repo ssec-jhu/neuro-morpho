@@ -32,6 +32,7 @@ def run(
     testing_y_dir: str | Path,
     model_save_dir: str | Path,
     model_out_y_dir: str | Path,
+    model_out_val_y_dir: str | Path,
     model_stats_output_dir: str | Path,
     labeled_stats_output_dir: str | Path,
     report_output_dir: str | Path,
@@ -56,6 +57,7 @@ def run(
     testing_y_dir = Path(testing_y_dir)
     model_save_dir = Path(model_save_dir)
     model_out_y_dir = Path(model_out_y_dir)
+    model_out_val_y_dir = Path(model_out_val_y_dir)
     model_stats_output_dir = Path(model_stats_output_dir)
     labeled_stats_output_dir = Path(labeled_stats_output_dir)
     report_output_dir = Path(report_output_dir)
@@ -91,6 +93,7 @@ def run(
             validating_x_dir,
             validating_y_dir,
             model_dir,
+            model_out_val_y_dir,
         )
     else:
         threshold = None
@@ -114,6 +117,7 @@ def run(
                 validating_x_dir,
                 validating_y_dir,
                 model_dir,
+                model_out_val_y_dir
             )
 
         mode = "test" if test else "infer"
