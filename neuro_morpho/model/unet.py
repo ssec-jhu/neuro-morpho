@@ -598,7 +598,7 @@ class UNet(base.BaseModel):
             if len(pred_paths) != len(lbl_paths):
                 warnings.warn(
                     f"Output validation directory {model_out_val_y_dir} already exists but has a different number of files "
-                    f"({len(pred_paths)}) than the label validation directory {lbl_paths} ({len(lbl_paths)}). "
+                    f"({len(pred_paths)}) than the label validation directory {lbl_dir} ({len(lbl_paths)}). "
                     "Recomputing the predictions and overwriting the existing files."
                 )
             else:
@@ -624,8 +624,8 @@ class UNet(base.BaseModel):
             ) as pbar:
                 for img_path in pbar:
                     pbar.set_postfix(file=img_path.name, refresh=False)
-                    if not img_path.exists() or not lbl_path.exists():
-                        raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
+                    if not img_path.exists():
+                        raise FileNotFoundError(f"Image {img_path} does not exist.")
                     # Read the image and target
                     image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
                     image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
@@ -642,30 +642,45 @@ class UNet(base.BaseModel):
                     pred_path = model_out_val_y_dir / f"{img_path.stem}_pred{img_path.suffix}"
                     cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
                     preds.append(pred)
-            
+                    
         else:  # Load existing predictions
-            preds = list()
-            for pred_path in pred_paths:
-                pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
-                if pred is None:
-                    raise ValueError(
-                        f"Could not read prediction {pred_path}. Ensure it is valid image file."
-                    )
-                pred = (pred.astype(np.float32) / pred.max()).astype(np.float32)
-                preds.append(pred)
+            with tqdm(
+                pred_paths,
+                total=len(pred_paths),
+                desc="Loading predictions for threshold calculation",
+                dynamic_ncols=True,
+                leave=False,  # prevents lingering duplicate line
+            ) as pbar:
+                for pred_path in pbar:
+                    pbar.set_postfix(file=pred_path.name, refresh=False)
+                    pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
+                    if pred is None:
+                        raise ValueError(
+                            f"Could not read prediction {pred_path}. Ensure it is valid image file."
+                        )
+                    pred = (pred.astype(np.float32) / pred.max()).astype(np.float32)
+                    preds.append(pred)
+                
         preds = np.stack(preds)
         
         # Read labels        
         labels = list()
-        for lbl_path in lbl_paths:
-            label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
-            if label is None:
-                raise ValueError(
-                    f"Could not read label {lbl_path}. Ensure it is valid image file."
-                )
-            label = (label.astype(np.float32) / label.max()).astype(np.uint8)
-            # label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
-            labels.append(label)
+        with tqdm(
+            lbl_paths,
+            total=len(lbl_paths),
+            desc="Loading labels for threshold calculation",
+            dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
+        ) as pbar:
+            for lbl_path in pbar:
+                pbar.set_postfix(file=lbl_path.name, refresh=False)
+                label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
+                if label is None:
+                    raise ValueError(
+                        f"Could not read label {lbl_path}. Ensure it is valid image file."
+                    )
+                label = (label.astype(np.float32) / label.max()).astype(np.uint8)
+                labels.append(label)
         labels = np.stack(labels)
 
         # Calculate the optimal threshold
@@ -678,16 +693,14 @@ class UNet(base.BaseModel):
             leave=False,  # prevents lingering duplicate line
         ) as pbar:
             for threshold in pbar:
-                pbar.set_description(f"Calculating f1 score for threshold {threshold:.2f}", refresh=False)
                 # preds_ = preds.copy()
                 # preds_[preds_ >= threshold] = 1
                 # preds_[preds_ < threshold] = 0
                 preds_bin = (preds >= threshold).astype(np.uint8)
                 # f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
-                f1s.append(global_f1(preds_bin, labels))
-                
-        for t, f in zip(thresholds, f1s):
-            print(f"Threshold = {t:.2f}\tF1 = {f:.4f}")
+                f1 = global_f1(preds_bin, labels)
+                f1s.append(f1)
+                pbar.set_description(f"Calculated f1 score for threshold {threshold:.2f} is {f1:.4f}", refresh=False)
     
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
