@@ -118,6 +118,9 @@ UNet.predict_dir.fix_breaks = True
 
 UNet.find_threshold.tile_size = %IN_SIZE
 UNet.find_threshold.tile_assembly = %TILE_ASSEMBLY
+UNet.find_threshold.min_thresh = 0.2
+UNet.find_threshold.max_thresh = 0.7
+UNet.find_threshold.thresh_step = 0.01
 
 generate_report.reports = [
     @noboxplot_summary,

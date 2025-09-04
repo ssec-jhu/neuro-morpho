@@ -50,6 +50,9 @@ from neuro_morpho.model.breaks_analyzer import BreaksAnalyzer
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
 
+warnings.simplefilter("always")  # ensure warning is shown
+warnings.formatwarning = lambda message, category, filename, lineno, line=None: f"{message}\n"
+
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
 )
@@ -548,6 +551,9 @@ class UNet(base.BaseModel):
         allowlist=[
             "tile_size",
             "tile_assembly",
+            "min_thresh",
+            "max_thresh",
+            "thresh_step",
         ]
     )
     def find_threshold(
@@ -558,6 +564,9 @@ class UNet(base.BaseModel):
         model_out_val_y_dir: str | Path,
         tile_size: tuple[int, int] = (512, 512),
         tile_assembly: str = "nn",
+        min_thresh: float = 0.1,
+        max_thresh: float = 0.9,
+        thresh_step: float = 0.01,
     ) -> float:
         """Find the optimal threshold for binarizing a soft prediction.
 
@@ -566,14 +575,37 @@ class UNet(base.BaseModel):
                 original images. Defaults to None.
             lbl_dir (str | Path | None, optional): Directory containing
                 the ground truth segmentations. Defaults to None.
-            tiler (Tiler, optional): Tiler object for tiling the images.
-                Defaults to None.
-
+            model_dir (str | Path): Directory containing the trained model
+                and threshold file.
+            model_out_val_y_dir (str | Path): Directory to save/load the
+                model predictions on the validation set.
+            tile_size (tuple[int, int], optional): Size of the tiles to use
+                for tiling the input images. Defaults to (512, 512).
+            tile_assembly (str, optional): Method for assembling the tiles,
+                can be 'nn' (nearest neighbor), 'mean', or 'max'. Defaults to 'nn'.
+            min_thresh (float, optional): Minimum threshold to consider.
+                Defaults to 0.1.
+            max_thresh (float, optional): Maximum threshold to consider.
+                Defaults to 0.9.
+            thresh_step (float, optional): Step size for threshold search.
+                Defaults to 0.01.
         Returns:
             float: The optimal threshold.
         """
-        threshold = self.load_threshold(model_dir)
-        if threshold is not None:
+        thresholds, f1s = self.load_threshold(model_dir)
+        if thresholds == [] or f1s == []:
+            start_indx = 0  # Need to compute the thresholds and f1s "from scratch"
+        elif (thresholds[-1] < max_thresh):
+            start_indx = len(thresholds)  # Need to compute the thresholds and f1s from the last threshold
+            min_thresh = thresholds[-1] + thresh_step
+            warnings.warn(
+                f"Threshold file in {model_dir!s} does not cover the range of thresholds from"
+                f"({min_thresh:.2f} to {max_thresh:.2f}). Continue computing the threshold values from {min_thresh:.2f}."
+            )
+        else:
+            f1s = np.stack(f1s)
+            threshold = thresholds[f1s.argmax()]
+            print(f"The threshold for the given model exists: {threshold:.2f} and has been loaded.")
             return threshold
 
         if img_dir is None or lbl_dir is None:
@@ -684,10 +716,9 @@ class UNet(base.BaseModel):
         labels = np.stack(labels)
 
         # Calculate the optimal threshold
-        f1s = list()
-        thresholds = np.stack(list(range(20, 70))) / 100
+        thresholds += np.arange(min_thresh, max_thresh + thresh_step, thresh_step).tolist()
         with tqdm(
-            thresholds,
+            thresholds[start_indx:],
             total=len(thresholds),
             dynamic_ncols=True,
             leave=False,  # prevents lingering duplicate line
@@ -700,11 +731,11 @@ class UNet(base.BaseModel):
                 # f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
                 f1 = global_f1(preds_bin, labels)
                 f1s.append(f1)
+                self.save_threshold(model_dir, threshold, f1)
                 pbar.set_description(f"Calculated f1 score for threshold {threshold:.2f} is {f1:.4f}", refresh=False)
     
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
-        self.save_threshold(model_dir, threshold)
 
         return threshold
 
@@ -803,7 +834,7 @@ class UNet(base.BaseModel):
         if hasattr(self, "optimizer"):
             self.optimizer.load_state_dict(data["optimizer_state_dict"])
 
-    def save_threshold(self, model_dir: Path | str, threshold: float) -> None:
+    def save_threshold(self, model_dir: Path | str, threshold: float, f1: float) -> None:
         """Save a binarization threshold for a given model.
 
         This method will save the threshold to a file named `threshold.csv` in the
@@ -812,35 +843,44 @@ class UNet(base.BaseModel):
         Args:
             model_dir (Path | str): The directory to save the threshold file in.
             threshold (float): The threshold value to save.
+            f1 (float): The f1 score corresponding to the threshold.
         """
         model_dir = Path(model_dir)
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        thresh_file_path = model_dir / "threshold.csv"
-        with open(thresh_file_path, "w") as f:
-            f.write(f"{threshold}\n")
-            print(f"The threshold for the given model is found to be {threshold:.2f} and has been saved.")
+        thresh_file_path = model_dir / "threshold_ckpt.csv"
+        with open(thresh_file_path, "a") as f:
+            f.write(f"{threshold},{f1}\n")
 
-    def load_threshold(self, model_dir: Path | str) -> float:
+    def load_threshold(self, model_dir: Path | str) -> tuple[list[float], list[float]]:
         """Load the threshold from a given model path.
 
         Args:
             model_dir (Path | str): The directory containing the threshold file.
+        Returns:
+            tuple[tuple[float], tuple[float]]: A tuple containing two numpy arrays: theresholds and f1s.
         """
         model_dir = Path(model_dir)
         if not model_dir.exists():
             raise FileNotFoundError(f"Model dir {model_dir!s} does not exist")
 
-        thresh_file_path = model_dir / "threshold.csv"
+        thresholds, f1s = [], []
+        thresh_file_path = model_dir / "threshold_ckpt.csv"
         if not thresh_file_path.exists():
             warnings.warn(f"Threshold file {thresh_file_path!s} does not exist")
-            threshold = None
         else:
-            with open(thresh_file_path) as f:
-                threshold = float(f.read().strip())
-                print(f"The threshold for the given model exists: {threshold:.2f} and has been loaded.")
+            # Load the thresholds and f1s from the file
+            # Expecting a CSV file with two columns: threshold, f1
+            # Using np.loadtxt to load the data
+            # If the file is empty, return empty lists
+            data = np.loadtxt(thresh_file_path, delimiter=",")
+            if len(data) == 0:
+                warnings.warn(f"Threshold file {thresh_file_path!s} is empty")
+            else:
+                thresholds = data[:, 0].tolist()
+                f1s = data[:, 1].tolist()
 
-        return threshold
+        return thresholds, f1s
 
 
 class UNetModule(nn.Module):

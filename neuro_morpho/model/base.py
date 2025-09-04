@@ -85,7 +85,10 @@ class BaseModel:
         in_dir: str | Path,
         out_dir: str | Path,
         model_dir: str | Path,
-        model_out_val_y_dir: str | Path) -> float:
+        model_out_val_y_dir: str | Path,
+        min_thresh: float,
+        max_thresh: float,
+        thresh_step: float) -> float:
         """Predict the output for all images in the given directory.
 
         Args:
