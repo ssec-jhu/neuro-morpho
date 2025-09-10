@@ -113,12 +113,7 @@ def run(
             model.load_checkpoint(checkpoint_dir)
         if threshold is None:  # Get the threshold
             model_dir = model_save_dir / model_id
-            threshold = model.find_threshold(
-                validating_x_dir,
-                validating_y_dir,
-                model_dir,
-                model_out_val_y_dir
-            )
+            threshold = model.find_threshold(validating_x_dir, validating_y_dir, model_dir, model_out_val_y_dir)
 
         mode = "test" if test else "infer"
         model.predict_dir(

@@ -163,18 +163,21 @@ def maybe_pbar(iterable, desc: str, unit: str, position: int, steps_bar: bool) -
         return tqdm(iterable, desc=desc, unit=unit, position=position)
     return iterable
 
+
 def global_f1(preds, labels):
     total_tp = total_fp = total_fn = 0
 
     for p, l in zip(preds, labels):  # iterate image by image
-        tn, fp, fn, tp = confusion_matrix(l.ravel(), p.ravel(), labels=[0,1]).ravel()
+        tn, fp, fn, tp = confusion_matrix(l.ravel(), p.ravel(), labels=[0, 1]).ravel()
         total_tp += tp
         total_fp += fp
         total_fn += fn
 
     precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) else 0
-    recall    = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0
+    recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0
     return 2 * precision * recall / (precision + recall) if (precision + recall) else 0
+
+
 @gin.register
 class UNet(base.BaseModel):
     """U-Net model for image segmentation.
@@ -527,7 +530,9 @@ class UNet(base.BaseModel):
                 pred = self.predict_proba(image, tiler)
                 pred = np.squeeze(pred, axis=(0, 1))
                 if image_shape_changed:
-                    pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
+                    pred = pred[
+                        crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]
+                    ]
                 pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
                 cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
 
@@ -595,7 +600,7 @@ class UNet(base.BaseModel):
         thresholds, f1s = self.load_threshold(model_dir)
         if thresholds == [] or f1s == []:
             start_indx = 0  # Need to compute the thresholds and f1s "from scratch"
-        elif (thresholds[-1] < max_thresh):
+        elif thresholds[-1] < max_thresh:
             start_indx = len(thresholds)  # Need to compute the thresholds and f1s from the last threshold
             min_thresh = thresholds[-1] + thresh_step
             warnings.warn(
@@ -624,9 +629,11 @@ class UNet(base.BaseModel):
         if len(img_paths) != len(lbl_paths):
             raise ValueError("The number of images in the input and target directories must match.")
 
-        compute_predictions = True # Whether to compute predictions or use existing ones
+        compute_predictions = True  # Whether to compute predictions or use existing ones
         if model_out_val_y_dir.exists():
-            pred_paths = sorted(list(Path(model_out_val_y_dir).glob("*.tif")) + list(Path(model_out_val_y_dir).glob("*.pgm")))
+            pred_paths = sorted(
+                list(Path(model_out_val_y_dir).glob("*.tif")) + list(Path(model_out_val_y_dir).glob("*.pgm"))
+            )
             if len(pred_paths) != len(lbl_paths):
                 warnings.warn(
                     f"Output validation directory {model_out_val_y_dir} already exists but has a different number of files "
@@ -638,7 +645,7 @@ class UNet(base.BaseModel):
                 compute_predictions = False
         else:
             model_out_val_y_dir.mkdir(parents=True, exist_ok=True)
-        
+
         preds = list()
         if compute_predictions:
             # Create a tiler object to handle the tiling of the images
@@ -662,19 +669,17 @@ class UNet(base.BaseModel):
                     image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
                     image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
                     if image is None:
-                        raise ValueError(
-                            f"Could not read image {img_path}. Ensure it is valid image file."
-                        )
+                        raise ValueError(f"Could not read image {img_path}. Ensure it is valid image file.")
                     # Get soft prediction for the image
                     image = np.stack(image)[np.newaxis, np.newaxis, :, :]
                     pred = self.predict_proba(image, tiler)
                     if pred is None:
                         raise ValueError(f"Could not get soft prediction for image {img_path}.")
-                    pred = np.squeeze(pred, axis=(0, 1))   
+                    pred = np.squeeze(pred, axis=(0, 1))
                     pred_path = model_out_val_y_dir / f"{img_path.stem}_pred{img_path.suffix}"
                     cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
                     preds.append(pred)
-                    
+
         else:  # Load existing predictions
             with tqdm(
                 pred_paths,
@@ -687,15 +692,13 @@ class UNet(base.BaseModel):
                     pbar.set_postfix(file=pred_path.name, refresh=False)
                     pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
                     if pred is None:
-                        raise ValueError(
-                            f"Could not read prediction {pred_path}. Ensure it is valid image file."
-                        )
+                        raise ValueError(f"Could not read prediction {pred_path}. Ensure it is valid image file.")
                     pred = (pred.astype(np.float32) / pred.max()).astype(np.float32)
                     preds.append(pred)
-                
+
         preds = np.stack(preds)
-        
-        # Read labels        
+
+        # Read labels
         labels = list()
         with tqdm(
             lbl_paths,
@@ -708,9 +711,7 @@ class UNet(base.BaseModel):
                 pbar.set_postfix(file=lbl_path.name, refresh=False)
                 label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
                 if label is None:
-                    raise ValueError(
-                        f"Could not read label {lbl_path}. Ensure it is valid image file."
-                    )
+                    raise ValueError(f"Could not read label {lbl_path}. Ensure it is valid image file.")
                 label = (label.astype(np.float32) / label.max()).astype(np.uint8)
                 labels.append(label)
         labels = np.stack(labels)
@@ -733,7 +734,7 @@ class UNet(base.BaseModel):
                 f1s.append(f1)
                 self.save_threshold(model_dir, threshold, f1)
                 pbar.set_description(f"Calculated f1 score for threshold {threshold:.2f} is {f1:.4f}", refresh=False)
-    
+
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
 
