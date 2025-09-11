@@ -38,7 +38,7 @@ import gin
 import numpy as np
 import torch
 import torch.utils.data as td
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import confusion_matrix
 from torch import nn
 from tqdm import tqdm
 from typing_extensions import override
@@ -167,8 +167,8 @@ def maybe_pbar(iterable, desc: str, unit: str, position: int, steps_bar: bool) -
 def global_f1(preds, labels):
     total_tp = total_fp = total_fn = 0
 
-    for p, l in zip(preds, labels):  # iterate image by image
-        tn, fp, fn, tp = confusion_matrix(l.ravel(), p.ravel(), labels=[0, 1]).ravel()
+    for pred, label in zip(preds, labels, strict=False):  # iterate image by image
+        tn, fp, fn, tp = confusion_matrix(label.ravel(), pred.ravel(), labels=[0, 1]).ravel()
         total_tp += tp
         total_fp += fp
         total_fn += fn
@@ -594,6 +594,7 @@ class UNet(base.BaseModel):
                 Defaults to 0.9.
             thresh_step (float, optional): Step size for threshold search.
                 Defaults to 0.01.
+
         Returns:
             float: The optimal threshold.
         """
@@ -605,7 +606,8 @@ class UNet(base.BaseModel):
             min_thresh = thresholds[-1] + thresh_step
             warnings.warn(
                 f"Threshold file in {model_dir!s} does not cover the range of thresholds from"
-                f"({min_thresh:.2f} to {max_thresh:.2f}). Continue computing the threshold values from {min_thresh:.2f}."
+                f"({min_thresh:.2f} to {max_thresh:.2f}). Continue computing the threshold values from"
+                f"{min_thresh:.2f}."
             )
         else:
             f1s = np.stack(f1s)
@@ -636,8 +638,8 @@ class UNet(base.BaseModel):
             )
             if len(pred_paths) != len(lbl_paths):
                 warnings.warn(
-                    f"Output validation directory {model_out_val_y_dir} already exists but has a different number of files "
-                    f"({len(pred_paths)}) than the label validation directory {lbl_dir} ({len(lbl_paths)}). "
+                    f"Output validation directory {model_out_val_y_dir} already exists but has a different number of "
+                    f"files ({len(pred_paths)}) than the label validation directory {lbl_dir} ({len(lbl_paths)}). "
                     "Recomputing the predictions and overwriting the existing files."
                 )
             else:
@@ -858,6 +860,7 @@ class UNet(base.BaseModel):
 
         Args:
             model_dir (Path | str): The directory containing the threshold file.
+
         Returns:
             tuple[tuple[float], tuple[float]]: A tuple containing two numpy arrays: theresholds and f1s.
         """
