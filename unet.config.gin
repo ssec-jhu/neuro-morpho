@@ -17,19 +17,19 @@ TILE_ASSEMBLY = 'nn'  # Nearest neighbor tile assembly; or 'max' for max pooling
 
 CometLogger.workspace = "ssec-dendrite-segmentation"
 CometLogger.project_name = "unet-classification"
-CometLogger.experiment_key = None # "019cae52c3654ebe8deec73b171b1e00"  # Experiment key (or None)
+CometLogger.experiment_key = "304f9c01319a4899a80f4514c413213d"  # Experiment key (or None)
 CometLogger.disabled = False
 
 
 torch.optim.Adam.lr = 0.001
 
 pos/class_accuracy.class_idx = 1
-pos/class_accuracy.threshold = 0.5
+pos/class_accuracy.threshold = 0.62
 neg/class_accuracy.class_idx = 0
-neg/class_accuracy.threshold = 0.5
+neg/class_accuracy.threshold = 0.62
 
 
-WeightedFocalLoss.alpha = 0.25
+WeightedFocalLoss.alpha = 0.01
 WeightedFocalLoss.gamma = 2.0
 SigmoidDiceLoss.smooth = 1
 
@@ -83,7 +83,7 @@ validate/build_dataloader.post_aug_y_transform = @DownSample()
 
 CombinedLoss.weights = (
     1.0,  # weight for dice
-    0.5,  # weight for focal loss
+    100.0,  # weight for focal loss
 )
 CombinedLoss.losses = (
     @dice/WeightedMap(),          # First loss function (Dice)
@@ -100,7 +100,7 @@ UNet.decoder_channels = [512, 256, 128, 64]
 
 UNet.fit.train_data_loader_fn = @train/build_dataloader  # Use the training data loader
 UNet.fit.validate_data_loader_fn = @validate/build_dataloader  # Use the validating data loader
-UNet.fit.epochs =   20
+UNet.fit.epochs =   300
 UNet.fit.optimizer = @torch.optim.Adam
 UNet.fit.loss_fn = @CombinedLoss()  # Use the combined loss function
 UNet.fit.metric_fns = [
@@ -118,6 +118,9 @@ UNet.predict_dir.fix_breaks = True
 
 UNet.find_threshold.tile_size = %IN_SIZE
 UNet.find_threshold.tile_assembly = %TILE_ASSEMBLY
+UNet.find_threshold.min_thresh = 0.2
+UNet.find_threshold.max_thresh = 0.7
+UNet.find_threshold.thresh_step = 0.01
 
 generate_report.reports = [
     @noboxplot_summary,
@@ -143,17 +146,20 @@ run.model_stats_output_dir = "/home/idies/workspace/ssec_neural_morphology/Simul
 run.labeled_stats_output_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/stats/label"
 run.report_output_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/report"
 
-run.train = True
+run.train = False
 run.training_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/imgs"
 run.training_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/train/lbls"
 run.validating_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.validating_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/val/imgs"
 run.logger = @CometLogger()
 
-run.get_threshold = False  # Calculate or uplaod threshold for binarization
+run.get_threshold = True  # Calculate or upload threshold for binarization
+run.model_out_val_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/output_val"
 
-run.test = False # Whether to run the model on the test set with images of the SAME size
+run.test = True # Whether to run the model on the test set with images of the SAME size
 run.testing_x_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/test/imgs"
 run.testing_y_dir = "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/test/lbls"
 
-run.infer = False
+run.infer = False # Whether to run the model on the inference set with images of possibly DIFFERENT size
+
+run.cal_stats = True  # Whether to calculate statistics and report on the output

@@ -80,7 +80,16 @@ class BaseModel:
         """
         raise NotImplementedError(ERR_NOT_IMPLEMENTED.format(name="predict_proba"))
 
-    def find_threshold(self, in_dir: str | Path, out_dir: str | Path, model_dir: str | Path) -> float:
+    def find_threshold(
+        self,
+        in_dir: str | Path,
+        out_dir: str | Path,
+        model_dir: str | Path,
+        model_out_val_y_dir: str | Path,
+        min_thresh: float,
+        max_thresh: float,
+        thresh_step: float,
+    ) -> float:
         """Predict the output for all images in the given directory.
 
         Args:

@@ -38,7 +38,7 @@ import gin
 import numpy as np
 import torch
 import torch.utils.data as td
-from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix
 from torch import nn
 from tqdm import tqdm
 from typing_extensions import override
@@ -49,6 +49,9 @@ from neuro_morpho.model import base, loss, metrics
 from neuro_morpho.model.breaks_analyzer import BreaksAnalyzer
 from neuro_morpho.model.tiler import Tiler
 from neuro_morpho.util import get_device
+
+warnings.simplefilter("always")  # ensure warning is shown
+warnings.formatwarning = lambda message, category, filename, lineno, line=None: f"{message}\n"
 
 ERR_PREDICT_DIR_NOT_IMPLEMENTED = (
     "The predict_dir method is not implemented, because you might be tiling, subclass and implement this method."
@@ -159,6 +162,20 @@ def maybe_pbar(iterable, desc: str, unit: str, position: int, steps_bar: bool) -
     if steps_bar:
         return tqdm(iterable, desc=desc, unit=unit, position=position)
     return iterable
+
+
+def global_f1(preds, labels):
+    total_tp = total_fp = total_fn = 0
+
+    for pred, label in zip(preds, labels, strict=False):  # iterate image by image
+        tn, fp, fn, tp = confusion_matrix(label.ravel(), pred.ravel(), labels=[0, 1]).ravel()
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) else 0
+    recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) else 0
+    return 2 * precision * recall / (precision + recall) if (precision + recall) else 0
 
 
 @gin.register
@@ -490,45 +507,58 @@ class UNet(base.BaseModel):
             image_size = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED).shape[:2]
             tiler.get_tiling_attributes(image_size)
 
-        for img_path in tqdm(img_paths, total=len(img_paths), desc="Processing images to predict"):
-            image_shape_changed = False
-            img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
-            image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
-            if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
-                if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
-                    image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
-                    image_shape_changed = True
-                tiler.get_tiling_attributes(image.shape[:2])
-            # Get soft prediction for the image
-            print("Getting soft prediction for the image ", img_path.name)
-            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
-            pred = self.predict_proba(image, tiler)
-            pred = np.squeeze(pred, axis=(0, 1))
-            if image_shape_changed:
-                pred = pred[crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]]
-            pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
-            cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
+        with tqdm(
+            img_paths,
+            total=len(img_paths),
+            desc="Inferring images for prediction purposes",
+            dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
+        ) as pbar:
+            for img_path in pbar:
+                pbar.set_postfix(file=img_path.name, refresh=False)
+                image_shape_changed = False
+                img = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+                image = cv2.convertScaleAbs(img, alpha=255.0 / img.max()) / 255.0
+                if mode == "infer":  # Extend image size if less then tile size and create tiling attributes
+                    if image.shape[0] < tiler.tile_size or image.shape[1] < tiler.tile_size:  # Image is too small
+                        image, crop_coord = tiler.extend_image_shape(image)  # Adjust image shape
+                        image_shape_changed = True
+                    tiler.get_tiling_attributes(image.shape[:2])
+                # Get soft prediction for the image
+                print("Getting soft prediction for the image ", img_path.name)
+                image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+                pred = self.predict_proba(image, tiler)
+                pred = np.squeeze(pred, axis=(0, 1))
+                if image_shape_changed:
+                    pred = pred[
+                        crop_coord[0] : crop_coord[0] + img.shape[0], crop_coord[1] : crop_coord[1] + img.shape[1]
+                    ]
+                pred_path = out_dir / f"{img_path.stem}_pred{img_path.suffix}"
+                cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
 
-            if binarize:  # Get hard prediction for the image
-                print("Getting hard prediction for the image ", pred_path.name)
-                pred_bin = pred.copy()
-                pred_bin[pred_bin >= threshold] = 1
-                pred_bin[pred_bin < threshold] = 0
-                pred_bin = (pred_bin * 255).astype(np.uint8)
-                pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
-                cv2.imwrite(pred_bin_path, pred_bin)
+                if binarize:  # Get hard prediction for the image
+                    print("Getting hard prediction for the image ", pred_path.name)
+                    pred_bin = pred.copy()
+                    pred_bin[pred_bin >= threshold] = 1
+                    pred_bin[pred_bin < threshold] = 0
+                    pred_bin = (pred_bin * 255).astype(np.uint8)
+                    pred_bin_path = out_dir / f"{img_path.stem}_pred_bin{img_path.suffix}"
+                    cv2.imwrite(pred_bin_path, pred_bin)
 
-            if fix_breaks:
-                breaks_analyzer = BreaksAnalyzer()
-                print("Fixing breaks for the image ", pred_bin_path.name)
-                pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
-                pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
-                cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
+                if fix_breaks:
+                    breaks_analyzer = BreaksAnalyzer()
+                    print("Fixing breaks for the image ", pred_bin_path.name)
+                    pred_bin_fixed_img = breaks_analyzer.analyze_breaks(pred_bin, pred).copy()
+                    pred_bin_fixed_path = out_dir / f"{img_path.stem}_pred_bin_fixed{img_path.suffix}"
+                    cv2.imwrite(pred_bin_fixed_path, pred_bin_fixed_img)
 
     @gin.register(
         allowlist=[
             "tile_size",
             "tile_assembly",
+            "min_thresh",
+            "max_thresh",
+            "thresh_step",
         ]
     )
     def find_threshold(
@@ -536,8 +566,12 @@ class UNet(base.BaseModel):
         img_dir: str | Path,
         lbl_dir: str | Path,
         model_dir: str | Path,
+        model_out_val_y_dir: str | Path,
         tile_size: tuple[int, int] = (512, 512),
         tile_assembly: str = "nn",
+        min_thresh: float = 0.1,
+        max_thresh: float = 0.9,
+        thresh_step: float = 0.01,
     ) -> float:
         """Find the optimal threshold for binarizing a soft prediction.
 
@@ -546,14 +580,39 @@ class UNet(base.BaseModel):
                 original images. Defaults to None.
             lbl_dir (str | Path | None, optional): Directory containing
                 the ground truth segmentations. Defaults to None.
-            tiler (Tiler, optional): Tiler object for tiling the images.
-                Defaults to None.
+            model_dir (str | Path): Directory containing the trained model
+                and threshold file.
+            model_out_val_y_dir (str | Path): Directory to save/load the
+                model predictions on the validation set.
+            tile_size (tuple[int, int], optional): Size of the tiles to use
+                for tiling the input images. Defaults to (512, 512).
+            tile_assembly (str, optional): Method for assembling the tiles,
+                can be 'nn' (nearest neighbor), 'mean', or 'max'. Defaults to 'nn'.
+            min_thresh (float, optional): Minimum threshold to consider.
+                Defaults to 0.1.
+            max_thresh (float, optional): Maximum threshold to consider.
+                Defaults to 0.9.
+            thresh_step (float, optional): Step size for threshold search.
+                Defaults to 0.01.
 
         Returns:
             float: The optimal threshold.
         """
-        threshold = self.load_threshold(model_dir)
-        if threshold is not None:
+        thresholds, f1s = self.load_threshold(model_dir)
+        if thresholds == [] or f1s == []:
+            start_indx = 0  # Need to compute the thresholds and f1s "from scratch"
+        elif thresholds[-1] < max_thresh:
+            start_indx = len(thresholds)  # Need to compute the thresholds and f1s from the last threshold
+            min_thresh = thresholds[-1] + thresh_step
+            warnings.warn(
+                f"Threshold file in {model_dir!s} does not cover the range of thresholds from"
+                f"({min_thresh:.2f} to {max_thresh:.2f}). Continue computing the threshold values from"
+                f"{min_thresh:.2f}."
+            )
+        else:
+            f1s = np.stack(f1s)
+            threshold = thresholds[f1s.argmax()]
+            print(f"The threshold for the given model exists: {threshold:.2f} and has been loaded.")
             return threshold
 
         if img_dir is None or lbl_dir is None:
@@ -561,6 +620,7 @@ class UNet(base.BaseModel):
 
         img_dir = Path(img_dir)
         lbl_dir = Path(lbl_dir)
+        model_out_val_y_dir = Path(model_out_val_y_dir)
 
         img_paths = sorted(list(Path(img_dir).glob("*.tif")) + list(Path(img_dir).glob("*.pgm")))
         lbl_paths = sorted(list(Path(lbl_dir).glob("*.tif")) + list(Path(lbl_dir).glob("*.pgm")))
@@ -571,56 +631,114 @@ class UNet(base.BaseModel):
         if len(img_paths) != len(lbl_paths):
             raise ValueError("The number of images in the input and target directories must match.")
 
-        # Create a tiler object to handle the tiling of the images
-        tiler = Tiler(tile_size[0], tile_assembly)
-        image = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED)
-        tiler.get_tiling_attributes(image.shape[:2])  # Get tiling attributes based on image size
+        compute_predictions = True  # Whether to compute predictions or use existing ones
+        if model_out_val_y_dir.exists():
+            pred_paths = sorted(
+                list(Path(model_out_val_y_dir).glob("*.tif")) + list(Path(model_out_val_y_dir).glob("*.pgm"))
+            )
+            if len(pred_paths) != len(lbl_paths):
+                warnings.warn(
+                    f"Output validation directory {model_out_val_y_dir} already exists but has a different number of "
+                    f"files ({len(pred_paths)}) than the label validation directory {lbl_dir} ({len(lbl_paths)}). "
+                    "Recomputing the predictions and overwriting the existing files."
+                )
+            else:
+                print(f"Using existing predictions in {model_out_val_y_dir} to compute the optimal threshold.")
+                compute_predictions = False
+        else:
+            model_out_val_y_dir.mkdir(parents=True, exist_ok=True)
 
         preds = list()
-        labels = list()
+        if compute_predictions:
+            # Create a tiler object to handle the tiling of the images
+            tiler = Tiler(tile_size[0], tile_assembly)
+            image = cv2.imread(str(img_paths[0]), cv2.IMREAD_UNCHANGED)
+            tiler.get_tiling_attributes(image.shape[:2])  # Get tiling attributes based on image size
 
-        # Read images and labels
-        for img_path, lbl_path in tqdm(
-            zip(img_paths, lbl_paths, strict=False),
-            total=len(img_paths),
-            desc="Processing images for threshold calculation",
-        ):
-            if not img_path.exists() or not lbl_path.exists():
-                raise FileNotFoundError(f"Image {img_path} or target {lbl_path} does not exist.")
-            # Read the image and target
-            image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED) / 255.0
-            image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
-            label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
-            label = cv2.convertScaleAbs(label, alpha=255.0 / label.max()) / 255.0
-            if image is None or label is None:
-                raise ValueError(
-                    f"Could not read image {img_path} or label {lbl_path}. Ensure they are valid image files."
-                )
-            # Get soft prediction for the image
-            print("Image: ", img_path.name)
-            image = np.stack(image)[np.newaxis, np.newaxis, :, :]
-            pred = self.predict_proba(image, tiler)
-            if pred is None:
-                raise ValueError(f"Could not get soft prediction for image {img_path}.")
+            # Read images and get predictions
+            with tqdm(
+                img_paths,
+                total=len(img_paths),
+                desc="Inferring images for threshold calculation",
+                dynamic_ncols=True,
+                leave=False,  # prevents lingering duplicate line
+            ) as pbar:
+                for img_path in pbar:
+                    pbar.set_postfix(file=img_path.name, refresh=False)
+                    if not img_path.exists():
+                        raise FileNotFoundError(f"Image {img_path} does not exist.")
+                    # Read the image and target
+                    image = cv2.imread(str(img_path), cv2.IMREAD_UNCHANGED)
+                    image = cv2.convertScaleAbs(image, alpha=255.0 / image.max()) / 255.0
+                    if image is None:
+                        raise ValueError(f"Could not read image {img_path}. Ensure it is valid image file.")
+                    # Get soft prediction for the image
+                    image = np.stack(image)[np.newaxis, np.newaxis, :, :]
+                    pred = self.predict_proba(image, tiler)
+                    if pred is None:
+                        raise ValueError(f"Could not get soft prediction for image {img_path}.")
+                    pred = np.squeeze(pred, axis=(0, 1))
+                    pred_path = model_out_val_y_dir / f"{img_path.stem}_pred{img_path.suffix}"
+                    cv2.imwrite(pred_path, (pred * 255).astype(np.uint8))
+                    preds.append(pred)
 
-            pred = np.squeeze(pred, axis=(0, 1))
-            cv2.imwrite(str(img_path.with_suffix(".pred.tif")), (pred * 255).astype(np.uint8))
-            preds.append(pred)
-            labels.append(label)
+        else:  # Load existing predictions
+            with tqdm(
+                pred_paths,
+                total=len(pred_paths),
+                desc="Loading predictions for threshold calculation",
+                dynamic_ncols=True,
+                leave=False,  # prevents lingering duplicate line
+            ) as pbar:
+                for pred_path in pbar:
+                    pbar.set_postfix(file=pred_path.name, refresh=False)
+                    pred = cv2.imread(str(pred_path), cv2.IMREAD_UNCHANGED)
+                    if pred is None:
+                        raise ValueError(f"Could not read prediction {pred_path}. Ensure it is valid image file.")
+                    pred = (pred.astype(np.float32) / pred.max()).astype(np.float32)
+                    preds.append(pred)
 
         preds = np.stack(preds)
+
+        # Read labels
+        labels = list()
+        with tqdm(
+            lbl_paths,
+            total=len(lbl_paths),
+            desc="Loading labels for threshold calculation",
+            dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
+        ) as pbar:
+            for lbl_path in pbar:
+                pbar.set_postfix(file=lbl_path.name, refresh=False)
+                label = cv2.imread(str(lbl_path), cv2.IMREAD_UNCHANGED)
+                if label is None:
+                    raise ValueError(f"Could not read label {lbl_path}. Ensure it is valid image file.")
+                label = (label.astype(np.float32) / label.max()).astype(np.uint8)
+                labels.append(label)
         labels = np.stack(labels)
 
-        f1s = list()
-        thresholds = np.stack(list(range(40, 80))) / 100
-        for threshold in tqdm(thresholds):
-            preds_ = preds.copy()
-            preds_[preds_ >= threshold] = 1
-            preds_[preds_ < threshold] = 0
-            f1s.append(f1_score(preds_.reshape(-1), labels.reshape(-1)))
+        # Calculate the optimal threshold
+        thresholds += np.arange(min_thresh, max_thresh + thresh_step, thresh_step).tolist()
+        with tqdm(
+            thresholds[start_indx:],
+            total=len(thresholds),
+            dynamic_ncols=True,
+            leave=False,  # prevents lingering duplicate line
+        ) as pbar:
+            for threshold in pbar:
+                # preds_ = preds.copy()
+                # preds_[preds_ >= threshold] = 1
+                # preds_[preds_ < threshold] = 0
+                preds_bin = (preds >= threshold).astype(np.uint8)
+                # f1s.append(f1_score(preds_bin.reshape(-1), labels.reshape(-1)))
+                f1 = global_f1(preds_bin, labels)
+                f1s.append(f1)
+                self.save_threshold(model_dir, threshold, f1)
+                pbar.set_description(f"Calculated f1 score for threshold {threshold:.2f} is {f1:.4f}", refresh=False)
+
         f1s = np.stack(f1s)
         threshold = thresholds[f1s.argmax()]
-        self.save_threshold(model_dir, threshold)
 
         return threshold
 
@@ -719,7 +837,7 @@ class UNet(base.BaseModel):
         if hasattr(self, "optimizer"):
             self.optimizer.load_state_dict(data["optimizer_state_dict"])
 
-    def save_threshold(self, model_dir: Path | str, threshold: float) -> None:
+    def save_threshold(self, model_dir: Path | str, threshold: float, f1: float) -> None:
         """Save a binarization threshold for a given model.
 
         This method will save the threshold to a file named `threshold.csv` in the
@@ -728,33 +846,45 @@ class UNet(base.BaseModel):
         Args:
             model_dir (Path | str): The directory to save the threshold file in.
             threshold (float): The threshold value to save.
+            f1 (float): The f1 score corresponding to the threshold.
         """
         model_dir = Path(model_dir)
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        thresh_file_path = model_dir / "threshold.csv"
-        with open(thresh_file_path, "w") as f:
-            f.write(f"{threshold}\n")
+        thresh_file_path = model_dir / "threshold_ckpt.csv"
+        with open(thresh_file_path, "a") as f:
+            f.write(f"{threshold},{f1}\n")
 
-    def load_threshold(self, model_dir: Path | str) -> float:
+    def load_threshold(self, model_dir: Path | str) -> tuple[list[float], list[float]]:
         """Load the threshold from a given model path.
 
         Args:
             model_dir (Path | str): The directory containing the threshold file.
+
+        Returns:
+            tuple[tuple[float], tuple[float]]: A tuple containing two numpy arrays: theresholds and f1s.
         """
         model_dir = Path(model_dir)
         if not model_dir.exists():
             raise FileNotFoundError(f"Model dir {model_dir!s} does not exist")
 
-        thresh_file_path = model_dir / "threshold.csv"
+        thresholds, f1s = [], []
+        thresh_file_path = model_dir / "threshold_ckpt.csv"
         if not thresh_file_path.exists():
             warnings.warn(f"Threshold file {thresh_file_path!s} does not exist")
-            threshold = None
         else:
-            with open(thresh_file_path) as f:
-                threshold = float(f.read().strip())
+            # Load the thresholds and f1s from the file
+            # Expecting a CSV file with two columns: threshold, f1
+            # Using np.loadtxt to load the data
+            # If the file is empty, return empty lists
+            data = np.loadtxt(thresh_file_path, delimiter=",")
+            if len(data) == 0:
+                warnings.warn(f"Threshold file {thresh_file_path!s} is empty")
+            else:
+                thresholds = data[:, 0].tolist()
+                f1s = data[:, 1].tolist()
 
-        return threshold
+        return thresholds, f1s
 
 
 class UNetModule(nn.Module):
