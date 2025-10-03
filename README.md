@@ -20,44 +20,21 @@ To address these issues, we propose developing open-source software based on con
 neural networks (CNNs - specifically Unet) to segment/skeletonize neural dendrites.
 
 
-# Quickstart
-
-```term
-pip install git+https://github.com/ssec-jhu/neuro-morpho.git
-```
-
-See [Usage](#usage) for quick and easy usage instructions for this Python package.
-
-To start using the application for training/ testing purposes run:
-```term
-pip install -r requirements/all.txt
-pip install -e .
-python -m  neuro_morpho.cli 
-```
-
-# Installation, Build, & Run instructions
-
-
-### Conda:
+# Installation instructions
 
 For additional cmds see the [Conda cheat-sheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf).
 
  * Download and install either [miniconda](https://docs.conda.io/en/latest/miniconda.html#installing) or [anaconda](https://docs.anaconda.com/free/anaconda/install/index.html).
- * Create new environment (env) and install ``conda create -n <environment_name>``
- * Activate/switch to new env ``conda activate <environment_name>``
- * ``cd`` into repo dir.
- * Install ``python`` and ``pip`` ``conda install python=3.11 pip``
+ * Create new environment: ``conda create -n <environment_name>``
+ * Activate/switch to new env: ``conda activate <environment_name>``
+ * Clone the repository: ``git clone git@github.com:ssec-jhu/neuro-morpho.git <repo_dir>``
+ * ``cd`` into ``repo_dir`` (``neuro-morpho``, if ``repo_dir`` wasn't set in previous command).
+ * Install ``python`` and ``pip``: ``conda install python=3.11 pip``
  * Install all required dependencies (assuming local dev work), there are two ways to do this
    * If working with tox (recommended) ``pip install -r requirements/dev.txt``.
    * If you would like to setup an environment with all requirements to run outside of tox ``pip install -r requirements/all.txt``.
-
-### Build:
-
-  #### with Python ecosystem:
-  * ``cd`` into repo dir.
-  * ``conda activate <environment_name>``
-  * Build and install package in <environment_name> conda env: ``pip install .``
-  * Do the same but in dev/editable mode (changes to repo will be reflected in env installation upon python kernel restart)
+ * Build and install package in <environment_name> conda env: ``pip install .``
+ * Do the same but in dev/editable mode (changes to repo will be reflected in env installation upon python kernel restart)
     _NOTE: This is the preferred installation method for dev work._
     ``pip install -e .``.
     _NOTE: If you didn't install dependencies from ``requirements/dev.txt``, you can install
@@ -70,24 +47,22 @@ For additional cmds see the [Conda cheat-sheet](https://docs.conda.io/projects/c
     the accelerator versions.  ``--force`` is preferable as it will error if the distribution is not available
     at the given url index, however ``--upgrade`` may not.
 
-### Usage
+# Usage
 
-Follow the above [Quickstart](#quickstart) or [Build with Python ecosystem instructions](#with-python-ecosystem).
-
-# Preprocessing
+## Preprocessing
 Run ``neuro_morpho/notebooks/data_organizer.ipynb`` notebook to partition the data to three disjoint groups: training, validation and test sets.
-The partition ratios are hardocded in notebook and set currently on 60% of data going to training, 20% to validation and 20% to testing.
+The partition ratios are hardcoded in notebook and set currently on 60% of data for training, 20% for validation and 20% for testing.
 
-# Main pipeline
+### Main pipeline
 Pipeline configuration is maintained in ``unet.config.gin`` file.
 Using the command line interface (i.e., from a terminal prompt):
 ```term
 python -m neuro_morpho.cli
 ```
 command runs the pipeline that consists of 4 separate modules:
-Each one of them can be run separately, or alternatively, all 4 can be run one afrter another.
+Each one of them can be run separately, or alternatively, all 4 can be run one after another.
 
-# Training
+### Training
 The relevant params in config file are:
 ```run.train = True
 run.training_x_dir = "/Path/to/training/images"
@@ -97,25 +72,22 @@ run.validating_y_dir = "/Path/to/validation/labels"
 run.logger = @CometLogger()
 ```
 
-# Threshold calculation
+### Threshold calculation
 The relevant param in config file is:
 ```run.get_threshold = True```
 
-# Testing
+### Testing
 The relevant params in config file are:
 ```run.test = True
 run.testing_x_dir = "/Path/to/testing/images"
 run.testing_y_dir = "/Path/to/testing/labels"
 ```
 
-# Image inference
+### Image inference
 The relevant params in config file are:
 ```run.infer = True```
 and the same paths to use as in case of testing
 
-
-# Testing
-_NOTE: The following steps require ``pip install -r requirements/dev.txt``._
 
 ## Using tox
 
@@ -130,7 +102,7 @@ The below assume you are running steps without tox, and that all requirements ar
 
 _NOTE: Tox will run these for you, this is specifically if there is a requirement to setup environment and run these outside the purview of tox._
 
-### Linting:
+## Linting:
 Facilitates in testing typos, syntax, style, and other simple code analysis tests.
   * ``cd`` into repo dir.
   * Switch/activate correct environment: ``conda activate <environment_name>``
@@ -139,26 +111,26 @@ Facilitates in testing typos, syntax, style, and other simple code analysis test
     ``pre-push`` git hook available in ``./githooks``.
     Instructions are in that file - just ``cp ./githooks/pre-push .git/hooks/;chmod +x .git/hooks/pre-push``.
 
-### Security Checks:
+## Security Checks:
 Facilitates in checking for security concerns using [Bandit](https://bandit.readthedocs.io/en/latest/index.html).
  * ``cd`` into repo dir.
  * ``bandit --severity-level=medium -r neuro_morpho``
 
-### Unit Tests:
+## Unit Tests:
 Facilitates in testing core package functionality at a modular level.
   * ``cd`` into repo dir.
   * Run all available tests: ``pytest .``
   * Run specific test: ``pytest tests/test_util.py::test_base_dummy``.
 
-### Regression tests:
+## Regression tests:
 Facilitates in testing whether core data results differ during development.
   * WIP
 
-### Smoke Tests:
+## Smoke Tests:
 Facilitates in testing at the application and infrastructure level.
   * WIP
 
-### Build Docs:
+## Build Docs:
 Facilitates in building, testing & viewing the docs.
  * ``cd`` into repo dir.
  * ``pip install -r requirements/docs.txt``
