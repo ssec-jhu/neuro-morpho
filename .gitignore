@@ -180,6 +180,7 @@ cython_debug/
 *.gif
 *.bmp
 *.webp
+*.npy
 
 # Report files
 *.xlsx
