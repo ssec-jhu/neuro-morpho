@@ -35,22 +35,30 @@ def main() -> None:
     cv2.imwrite("tile.png", tile)
     tile = cv2.convertScaleAbs(tile, alpha=255.0 / tile.max()) / 255.0
     
-    # Start the inferring process
-    tile_flip_0 = cv2.flip(tile, 0)  # Vertical flip
-    tile_flip_1 = cv2.flip(tile, 1)  # Horizontal flip
-    tile_flip__1 = cv2.flip(tile, -1)  # Both axes
-    tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
-    tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(model.device)
+    # # Start the inferring process
+    # tile_flip_0 = cv2.flip(tile, 0)  # Vertical flip
+    # tile_flip_1 = cv2.flip(tile, 1)  # Horizontal flip
+    # tile_flip__1 = cv2.flip(tile, -1)  # Both axes
+    # tile_stack = np.stack([tile, tile_flip_0, tile_flip_1, tile_flip__1])
+    # tile_torch = torch.tensor(tile_stack).unsqueeze(1).to(torch.float32).to(model.device)
+    # with torch.no_grad():
+    #     pred, _, _, _ = model.model(tile_torch)
+    #     pred = torch.sigmoid(pred)
+    #     pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
+    # pred_ori = pred_ori.cpu().numpy().squeeze()
+    # pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy().squeeze(), 0)
+    # pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy().squeeze(), 1)
+    # pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy().squeeze(), -1)
+    # tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
+
+     # Start the inferring process
+    tile_stack = np.stack(tile)[np.newaxis, np.newaxis, :, :]
+    tile_torch = torch.tensor(tile_stack).to(torch.float32).to(model.device)
     with torch.no_grad():
         pred, _, _, _ = model.model(tile_torch)
         pred = torch.sigmoid(pred)
-        pred_ori, pred_flip_0, pred_flip_1, pred_flip__1 = pred
-    pred_ori = pred_ori.cpu().numpy().squeeze()
-    pred_flip_0 = cv2.flip(pred_flip_0.cpu().numpy().squeeze(), 0)
-    pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy().squeeze(), 1)
-    pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy().squeeze(), -1)
-    tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
-
+    tile_pred = pred.cpu().numpy().squeeze()
+    
     np.save("tile_pred.npy", tile_pred)
     cv2.imwrite("tile_pred.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
     print("Done")
