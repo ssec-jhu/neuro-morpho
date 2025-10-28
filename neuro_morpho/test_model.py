@@ -50,7 +50,10 @@ def main() -> None:
     # pred_flip_1 = cv2.flip(pred_flip_1.cpu().numpy().squeeze(), 1)
     # pred_flip__1 = cv2.flip(pred_flip__1.cpu().numpy().squeeze(), -1)
     # tile_pred = np.mean([pred_ori, pred_flip_0, pred_flip_1, pred_flip__1], axis=0)
-
+    # np.save("tile_pred_aug.npy", tile_pred)
+    # cv2.imwrite("tile_pred_aug.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
+    # print("Done with augmentations")
+    
      # Start the inferring process
     tile_stack = np.stack(tile)[np.newaxis, np.newaxis, :, :]
     tile_torch = torch.tensor(tile_stack).to(torch.float32).to(model.device)
