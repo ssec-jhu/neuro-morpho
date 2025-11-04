@@ -31,8 +31,8 @@ def main() -> None:
         raise ValueError(f"Image not found: {image_path}")
 
     tile = image[1000:1512, 1000:1512]  # Example tile
-    np.save("tile.npy", tile)
-    cv2.imwrite("tile.png", tile)
+    np.save(f"tile_{model.device}.npy", tile)
+    cv2.imwrite(f"tile_{model.device}.png", tile)
     tile = cv2.convertScaleAbs(tile, alpha=255.0 / tile.max()) / 255.0
     
     # # Start the inferring process
@@ -62,9 +62,43 @@ def main() -> None:
         pred = torch.sigmoid(pred)
     tile_pred = pred.cpu().numpy().squeeze()
     
-    np.save("tile_pred.npy", tile_pred)
-    cv2.imwrite("tile_pred.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
+    np.save(f"tile_pred_{model.device}.npy", tile_pred)
+    cv2.imwrite(f"tile_pred_{model.device}.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
     print("Done")
+    
+    if device == "mps":
+        import matplotlib.pyplot as plt
+
+        # Load your .npy files
+        img1 = np.load("tile_pred_mps.npy")
+        img2 = np.load("tile_pred_cuda.npy")
+        img3 = np.load("tile_pred_cpu.npy")
+
+        # Compute differences (you can choose abs difference or signed)
+        diff12 = img1 - img2
+        diff23 = img2 - img3
+        diff13 = img1 - img3
+
+        # Make figure with 2 rows × 3 columns
+        fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+
+        # Top row: original images
+        for ax, img, title in zip(axes[0], [img1, img2, img3], ['MPS', 'CUDA', 'CPU']):
+            ax.imshow(img, cmap='gray', vmin=0, vmax=1)
+            ax.set_title(title)
+            ax.axis('off')
+
+        # Bottom row: difference images
+        for ax, diff, title in zip(axes[1], [diff12, diff23, diff13],
+                                   ['MPS−CUDA', 'CUDA−CPU', 'MPS−CPU']):
+            im = ax.imshow(diff, cmap='seismic', vmin=-1, vmax=1)
+            ax.set_title(f'Diff {title}')
+            ax.axis('off')
+            plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+        plt.tight_layout()
+        plt.savefig("tile_pred_comparison.png", dpi=300, bbox_inches='tight')
+        plt.show()
     
 if __name__ == "__main__":
     main()
