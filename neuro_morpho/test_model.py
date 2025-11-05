@@ -8,10 +8,9 @@ from pathlib import Path
 def main() -> None:
     
     model = UNet()
-    device = get_device()
-    model_save_dir = "/Users/vkluzner/OneDrive/NeuralMorphology//SimulationsNew_Tif3334/neuro-morpho/models"  if device == "mps" \
-        else "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/models" if device == "cuda" or device == "cpu" \
-        else None
+    model_save_dir = "/Users/vkluzner/OneDrive/NeuralMorphology//SimulationsNew_Tif3334/neuro-morpho/models"  if torch.backends.mps.is_available() \
+        else "/home/idies/workspace/ssec_neural_morphology/SimulationsNew_Tif3334/neuro-morpho/models"
+    device = "mps" if torch.backends.mps.is_available() else model.device
     if model_save_dir is None:
         raise ValueError("Unsupported device")
     checkpoint_dir = Path(model_save_dir) / "304f9c01319a4899a80f4514c413213d" / "checkpoints"
@@ -31,8 +30,8 @@ def main() -> None:
         raise ValueError(f"Image not found: {image_path}")
 
     tile = image[1000:1512, 1000:1512]  # Example tile
-    np.save(f"tile_{model.device}.npy", tile)
-    cv2.imwrite(f"tile_{model.device}.png", tile)
+    np.save(f"tile_{device}.npy", tile)
+    cv2.imwrite(f"tile_{device}.png", tile)
     tile = cv2.convertScaleAbs(tile, alpha=255.0 / tile.max()) / 255.0
     
     # # Start the inferring process
@@ -62,11 +61,11 @@ def main() -> None:
         pred = torch.sigmoid(pred)
     tile_pred = pred.cpu().numpy().squeeze()
     
-    np.save(f"tile_pred_{model.device}.npy", tile_pred)
-    cv2.imwrite(f"tile_pred_{model.device}.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
+    np.save(f"tile_pred_{device}.npy", tile_pred)
+    cv2.imwrite(f"tile_pred_{device}.png", (tile_pred / tile_pred.max() * 255).astype(np.uint8))
     print("Done")
     
-    if device == "mps":
+    if torch.backends.mps.is_available():
         import matplotlib.pyplot as plt
 
         # Load your .npy files
