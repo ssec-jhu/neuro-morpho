@@ -16,7 +16,7 @@
             "orcid": "0000-0001-5041-2458"
         }
     ],
-    "description": "Accelerating Software Development for Science Research",
+    "description": "Deep learning framework for skeletonization of neural dendrites",
     "license": "bsd-3-clause",
     "upload_type": "software",
     "access_right": "open"

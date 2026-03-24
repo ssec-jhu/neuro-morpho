@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software in your work, please cite it using the following metadata."
+authors:
+- family-names: "Hausen"
+  given-names: "Ryan"
+  orcid: "https://orcid.org/0000-0002-8543-761X"
+- family-names: "Kluzner"
+  given-names: "Vladimir"
+  orcid: "https://orcid.org/0009-0000-5844-661X"
+- family-names: "Lemson"
+  given-names: "Gerard"
+  orcid: "https://orcid.org/0000-0001-5041-2458"
+title: "Neuro-Morpho"
+version: 0.1.0
+doi: "10.5281/zenodo.16782869"
+date-released: 2025-08-08
+url: "https://github.com/ssec-jhu/neuro-morpho"
