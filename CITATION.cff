@@ -12,6 +12,6 @@ authors:
   orcid: "https://orcid.org/0000-0001-5041-2458"
 title: "Neuro-Morpho"
 version: 0.1.0
-doi: <https://zenodo.org/badge/DOI/10.5281/zenodo.16782869.svg>
+doi: "10.5281/zenodo.16782869"
 date-released: 2025-08-08
 url: "https://github.com/ssec-jhu/neuro-morpho"
